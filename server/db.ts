@@ -5,8 +5,8 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-// Use a default local database URL if environment variable is not set
-const DATABASE_URL = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/edutrack';
+// If environment variable isn't loaded, use hardcoded connection string as fallback
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_rmefOwT71vgH@ep-aged-cake-a475j4co-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require';
 
 // Configure the pool with SSL settings for Neon
 export const pool = new Pool({ 

@@ -25,8 +25,9 @@ export function Layout({ children }: LayoutProps) {
       <header className="border-b">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-xl md:text-2xl font-bold hover:text-primary">
-              WriteTrack
+            <Link href="/" className="flex items-center gap-2 font-bold hover:text-primary">
+              <img src="/logo.svg" alt="WriteTrack Logo" className="h-10 w-10 object-contain" />
+              <span className="text-xl md:text-2xl">WriteTrack</span>
             </Link>
 
             {/* Desktop Navigation Links */}
@@ -61,7 +62,10 @@ export function Layout({ children }: LayoutProps) {
             </SheetTrigger>
             <SheetContent>
               <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
+                <SheetTitle className="flex items-center gap-2">
+                  <img src="/logo.svg" alt="WriteTrack Logo" className="h-8 w-8 object-contain" />
+                  WriteTrack
+                </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-4 mt-4">
                 <Button asChild variant="ghost" className={location === "/" ? "bg-accent justify-start" : "justify-start"}>

@@ -1,6 +1,18 @@
 // Load environment variables first
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+// Try to load environment variables from multiple possible file locations
+const dotenvResult = dotenv.config();
+if (dotenvResult.error) {
+  console.error("Error loading .env file:", dotenvResult.error);
+  // Try alternate file locations
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.development') });
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+}
+
+// Debug environment variables
+console.log("DATABASE_URL set:", !!process.env.DATABASE_URL);
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";

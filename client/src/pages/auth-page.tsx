@@ -63,7 +63,10 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 p-4">
         <div className="flex flex-col justify-center">
-          <h1 className="text-4xl font-bold text-primary mb-4">WriteTrack</h1>
+          <div className="flex items-center gap-3 mb-4">
+            <img src="/logo.svg" alt="WriteTrack Logo" className="h-14 w-14 object-contain" />
+            <h1 className="text-4xl font-bold text-primary">WriteTrack</h1>
+          </div>
           <p className="text-lg text-muted-foreground">
             A secure platform for essay submissions and grading with keystroke tracking.
           </p>
@@ -75,7 +78,8 @@ export default function AuthPage() {
         </div>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-col items-center text-center">
+            <img src="/logo.svg" alt="WriteTrack Logo" className="h-12 w-12 object-contain mb-2" />
             <CardTitle>Welcome to WriteTrack</CardTitle>
             <CardDescription>
               Sign in to your account or create a new one
