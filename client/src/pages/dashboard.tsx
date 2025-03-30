@@ -74,7 +74,7 @@ export default function DashboardPage() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {classesQuery.data?.map((class_) => (
-          <Card key={class_.id}>
+          <Card key={class_.id} className="transition-all duration-300 hover:shadow-lg">
             <CardHeader>
               <CardTitle>{class_.name}</CardTitle>
               {class_.description && (
