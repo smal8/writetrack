@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for editor and quotes */
+.editor-container {
+  position: relative;
+}
+
+.editor-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border: 2px solid transparent;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+}
+
+.editor-container:has(textarea:focus) {
+  outline: none;
+}
+
+.editor-container:has(textarea:focus)::after {
+  border-color: hsl(var(--primary) / 30%);
+}
+
+/* Style quotes in the editor */
+textarea {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Make inserted quotes stand out with styling */
+.inserted-quote {
+  background-color: hsl(var(--primary) / 10%);
+  border-radius: 4px;
+  padding: 2px 4px;
+  color: hsl(var(--primary));
+  font-style: italic;
+  font-weight: 500;
+  display: inline-block;
+  margin: 4px 0;
+  border-left: 3px solid hsl(var(--primary));
+}
+
+/* Style quote items as clickable */
+.cursor-pointer {
+  position: relative;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.cursor-pointer:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cursor-pointer:active {
+  transform: translateY(0);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Poppins', sans-serif;
+  }
+}
