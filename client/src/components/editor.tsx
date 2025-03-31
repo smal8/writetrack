@@ -127,7 +127,7 @@ export function Editor({ value, onChange, readOnly = false }: EditorProps) {
       
       // Only prevent specific common shortcuts, not all Ctrl/Cmd combinations
       // This allows normal typing even after inserting a quote
-      const commonShortcuts = ['s', 'p', 'a', 'f', 'g', 'r', 'n', 'o', 't'];
+      const commonShortcuts = ['c', 'v', 's', 'p', 'a', 'f', 'g', 'r', 'n', 'o', 't'];
       if (commonShortcuts.includes(e.key.toLowerCase())) {
         e.preventDefault();
         return;
