@@ -32,8 +32,8 @@ An advanced educational management platform that enhances student-teacher intera
 
 1. Clone the repository
    ```
-   git clone https://github.com/yourusername/edutrack.git
-   cd edutrack
+   git clone https://github.com/yourusername/writetrack.git
+   cd writetrack
    ```
 
 2. Install dependencies
@@ -70,7 +70,3 @@ An advanced educational management platform that enhances student-teacher intera
 
 - `/shared`: Shared code between frontend and backend
   - `/schema.ts`: Database schema and types
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details
