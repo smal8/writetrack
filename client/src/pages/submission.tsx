@@ -20,33 +20,33 @@ function renderTeacherContent(submission: Submission & { assignment: Assignment 
   let enhancedContent = submission.content;
   
   // Type check and conversion for quotes
-  const quotes = submission.quotes as { 
-    text: string; 
-    source: string; 
-    page?: string;
-    insertedAt: string; 
-  }[];
+//   const quotes = submission.quotes as { 
+//     text: string; 
+//     source: string; 
+//     page?: string;
+//     insertedAt: string; 
+//   }[];
   
-  quotes.forEach((quote, index) => {
-    // Create the quote marker pattern
-    const placeholder = `[Quote ${index + 1}]`;
+//   quotes.forEach((quote, index) => {
+//     // Create the quote marker pattern
+//     const placeholder = `[Quote ${index + 1}]`;
     
-    // Create fully formatted quote with blockquote styling and indication for teachers
-    const formattedQuote = `
+//     // Create fully formatted quote with blockquote styling and indication for teachers
+//     const formattedQuote = `
     
-// --- QUOTE ${index + 1} ---
-> "${quote.text}"
-> — ${quote.source}${quote.page ? `, p. ${quote.page}` : ''}
-// --- END QUOTE ${index + 1} ---
+// // --- QUOTE ${index + 1} ---
+// > "${quote.text}"
+// > — ${quote.source}${quote.page ? `, p. ${quote.page}` : ''}
+// // --- END QUOTE ${index + 1} ---
     
-`;
+// `;
     
-    // Replace all occurrences with the formatted quote
-    enhancedContent = enhancedContent.replace(
-      new RegExp(placeholder, 'g'), 
-      formattedQuote
-    );
-  });
+//     // Replace all occurrences with the formatted quote
+//     enhancedContent = enhancedContent.replace(
+//       new RegExp(placeholder, 'g'), 
+//       formattedQuote
+//     );
+//   });
   
   return enhancedContent;
 }
@@ -195,7 +195,7 @@ export default function SubmissionPage() {
 
                   <KeystrokeGraph keystrokes={keystrokes} />
 
-                  <div className="mt-4 bg-muted p-4 rounded-md">
+                  {/* <div className="mt-4 bg-muted p-4 rounded-md">
                     <h4 className="font-semibold mb-2">Recent Keystrokes</h4>
                     <div className="space-y-2">
                       {keystrokes.slice(-10).map((keystroke, index) => (
@@ -207,7 +207,7 @@ export default function SubmissionPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </>
             )}
