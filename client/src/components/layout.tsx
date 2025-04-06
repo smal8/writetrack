@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { LogOut, Home, Menu, CalendarIcon } from "lucide-react";
@@ -17,7 +17,17 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { user, logoutMutation } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+
+  // Handle logout with redirect to landing page
+  const handleLogout = useCallback(() => {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        // Redirect to landing page after logout
+        setLocation('/');
+      }
+    });
+  }, [logoutMutation, setLocation]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -51,7 +61,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="hidden md:flex items-center gap-4">
             <Button
               variant="ghost"
-              onClick={() => logoutMutation.mutate()}
+              onClick={handleLogout}
               disabled={logoutMutation.isPending}
             >
               <LogOut className="mr-2 h-4 w-4" />
@@ -88,7 +98,7 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
                 <Button
                   variant="ghost"
-                  onClick={() => logoutMutation.mutate()}
+                  onClick={handleLogout}
                   disabled={logoutMutation.isPending}
                   className="justify-start"
                 >

@@ -33,13 +33,17 @@ const authSchema = z.object({
 });
 
 export default function AuthPage() {
-  const [_, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
   const [floatingElements, setFloatingElements] = useState<React.ReactNode[]>([]);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [mouseVelocity, setMouseVelocity] = useState({ x: 0, y: 0 });
   const lastMousePosition = useRef({ x: 0, y: 0, time: 0 });
+  
+  // Parse the URL parameters to get the tab value
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialTab = searchParams.get('tab') === 'register' ? 'register' : 'login';
 
   useEffect(() => {
     if (user) {
@@ -219,7 +223,7 @@ export default function AuthPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="login">
+              <Tabs defaultValue={initialTab}>
                 <TabsList className="w-full mb-4">
                   <TabsTrigger value="login" className="flex-1">Login</TabsTrigger>
                   <TabsTrigger value="register" className="flex-1">Register</TabsTrigger>
