@@ -14,6 +14,7 @@ import ClassPage from "@/pages/class-page";
 import NotFound from "@/pages/not-found";
 import ClassAssignmentsPage from "@/pages/class-assignments";
 import CompletedAssignmentsPage from "@/pages/completed-assignments";
+import CalendarPage from "@/pages/calendar";
 import React from "react";
 
 function WrappedRoute({ component: Component, ...props }: { component: React.ComponentType; path: string }) {
@@ -35,6 +36,7 @@ function Router() {
       <ProtectedRoute path="/classes/:id/students" component={() => <WrappedRoute component={ClassPage} path="/classes/:id/students" />} />
       <ProtectedRoute path="/classes/:id/assignments" component={() => <WrappedRoute component={ClassAssignmentsPage} path="/classes/:id/assignments" />} />
       <ProtectedRoute path="/completed-assignments" component={() => <WrappedRoute component={CompletedAssignmentsPage} path="/completed-assignments" />} />
+      <ProtectedRoute path="/calendar" component={() => <WrappedRoute component={CalendarPage} path="/calendar" />} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

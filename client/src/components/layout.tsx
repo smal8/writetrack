@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { LogOut, Home, Menu } from "lucide-react";
+import { LogOut, Home, Menu, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -38,6 +38,12 @@ export function Layout({ children }: LayoutProps) {
                   Home
                 </Link>
               </Button>
+              <Button asChild variant="ghost" className={location === "/calendar" ? "bg-accent" : ""}>
+                <Link href="/calendar">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  Calendar
+                </Link>
+              </Button>
             </nav>
           </div>
 
@@ -72,6 +78,12 @@ export function Layout({ children }: LayoutProps) {
                   <Link href="/">
                     <Home className="mr-2 h-4 w-4" />
                     Home
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost" className={location === "/calendar" ? "bg-accent justify-start" : "justify-start"}>
+                  <Link href="/calendar">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    Calendar
                   </Link>
                 </Button>
                 <Button

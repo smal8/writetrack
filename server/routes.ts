@@ -1,11 +1,15 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
+import express, { Express, Request, Response } from "express";
+import { createServer, Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { insertAssignmentSchema, insertSubmissionSchema, gradeSchema, insertStudentSchema, resetPasswordSchema, insertClassSchema, addStudentToClassSchema, User } from "@shared/schema";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { hashPassword, comparePasswords } from "./auth";
+import { eq, inArray } from "drizzle-orm";
+import { db } from "./db";
+import { users, assignments, classStudents } from "./db/schema";
+import * as schema from "../shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -404,6 +408,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Error creating assignment:', err);
         res.status(500).json({ message: "Failed to create assignment" });
       }
+    }
+  });
+
+  app.get("/api/assignments/all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const user = req.user;
+      console.log(`Fetching all assignments for user ${user.id}, isTeacher: ${user.isTeacher}`);
+
+      let assignments;
+
+      if (user.isTeacher) {
+        // For teachers, get all assignments they created
+        assignments = await storage.getTeacherAssignments(user.id);
+        console.log(`Found ${assignments.length} teacher assignments`);
+      } else {
+        // For students, get assignments from all their classes
+        const classes = await storage.getStudentClasses(user.id);
+        console.log(`Student is in ${classes.length} classes`);
+        
+        assignments = [];
+        for (const classObj of classes) {
+          const classAssignments = await storage.getClassAssignments(classObj.id);
+          console.log(`Found ${classAssignments.length} assignments for class ${classObj.id}`);
+          assignments.push(...classAssignments);
+        }
+      }
+
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching all assignments:", error);
+      res.status(500).json({ message: "Failed to fetch assignments" });
     }
   });
 
@@ -867,6 +906,60 @@ In conclusion, while technology has undoubtedly enhanced educational opportuniti
     } catch (err) {
       console.error('Error restoring submission version:', err);
       res.status(500).json({ message: "Failed to restore submission version" });
+    }
+  });
+
+  // Replace the existing submissions/all route with this corrected version
+  app.get("/api/submissions/all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const user = req.user;
+      console.log(`Fetching all submissions for user ${user.id}, isTeacher: ${user.isTeacher}`);
+
+      let submissions = [];
+
+      if (user.isTeacher) {
+        // For teachers, get submissions for assignments they created
+        const teacherAssignments = await storage.getTeacherAssignments(user.id);
+        
+        for (const assignment of teacherAssignments) {
+          const assignmentSubmissions = await storage.getAssignmentSubmissions(assignment.id);
+          submissions.push(...assignmentSubmissions);
+        }
+        
+        console.log(`Found ${submissions.length} submissions for teacher's assignments`);
+      } else {
+        // For students, we need to get ALL their submissions across all classes/assignments
+        // First get all classes the student is in
+        const classes = await storage.getStudentClasses(user.id);
+        
+        // Then get all assignments for those classes
+        const allAssignmentIds = [];
+        for (const classObj of classes) {
+          const classAssignments = await storage.getClassAssignments(classObj.id);
+          allAssignmentIds.push(...classAssignments.map(a => a.id));
+        }
+        
+        console.log(`Student has ${allAssignmentIds.length} possible assignments`);
+        
+        // For each assignment, check for student submissions
+        for (const assignmentId of allAssignmentIds) {
+          // Get both draft and finalized submissions
+          const assignmentSubmissions = await storage.getAssignmentSubmissions(assignmentId);
+          const studentSubmissions = assignmentSubmissions.filter(s => s.studentId === user.id);
+          submissions.push(...studentSubmissions);
+        }
+        
+        console.log(`Found ${submissions.length} submissions for student (both draft and finalized)`);
+      }
+
+      res.json(submissions);
+    } catch (error) {
+      console.error("Error fetching all submissions:", error);
+      res.status(500).json({ message: "Failed to fetch submissions" });
     }
   });
 
