@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Edit3, User, BookOpen, PieChart, Shield, Users, Layers, CheckCircle } from "lucide-react";
+import { ArrowRight, Edit3, User, Code, FileCode, Shield, PieChart, Lightbulb, CheckCircle } from "lucide-react";
 import { WaveAnimation } from "@/components/wave-animation";
 
 export default function LandingPage() {
@@ -24,12 +24,13 @@ export default function LandingPage() {
       }`}>
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="WriteTrack Logo" className="h-10 w-10" />
-            <span className="text-xl font-bold">WriteTrack</span>
+            <img src="/logo.svg" alt="Rawk AI Logo" className="h-10 w-10" />
+            <span className="text-xl font-bold">Rawk AI</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm font-medium hover:text-primary">Features</a>
-            <a href="#teachers" className="text-sm font-medium hover:text-primary">For Teachers</a>
+            <a href="#applications" className="text-sm font-medium hover:text-primary">Applications</a>
+            <a href="#educators" className="text-sm font-medium hover:text-primary">For Educators</a>
             <a href="#students" className="text-sm font-medium hover:text-primary">For Students</a>
           </nav>
           <div className="flex items-center gap-4">
@@ -50,10 +51,10 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-                Enhance Essay Writing and Detect AI Content
+                Keystroke Analysis for AI Content Detection
               </h1>
               <p className="text-lg text-muted-foreground mb-8">
-                The WriteTrack platform is designed to enhance the essay-writing experience for students while providing teachers with valuable insights into student progress and potential AI-generated content.
+                Rawk AI uses advanced analysis of raw keystroke patterns to detect AI-generated content in essays, with plans to expand into code and mathematical equations—providing educators with powerful tools to ensure academic integrity.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button asChild size="lg">
@@ -69,7 +70,7 @@ export default function LandingPage() {
             <div className="flex justify-center">
               <img 
                 src="/editor-preview.png" 
-                alt="WriteTrack Editor" 
+                alt="Rawk AI Editor" 
                 className="rounded-lg shadow-xl max-w-full h-auto"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -87,7 +88,7 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">Key Features</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              WriteTrack offers a comprehensive solution for essay writing, grading, and AI detection
+              Rawk AI offers sophisticated keystroke analysis across multiple content creation environments
             </p>
           </div>
           
@@ -97,106 +98,211 @@ export default function LandingPage() {
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
                 <Edit3 className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Distraction-Free Editor</h3>
+              <h3 className="text-xl font-semibold mb-2">Multi-Domain Editors</h3>
               <p className="text-muted-foreground">
-                A minimalist writing environment that helps students focus on content creation without distractions.
+                Specialized editors for essays, code, and mathematical equations, each with domain-specific features.
               </p>
             </div>
             
             {/* Feature 2 */}
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
-                <User className="h-6 w-6 text-primary" />
+                <PieChart className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Simple Authentication</h3>
+              <h3 className="text-xl font-semibold mb-2">Advanced AI Detection</h3>
               <p className="text-muted-foreground">
-                Students can log in with just their student ID, while teachers access a secure portal with school credentials.
+                Sophisticated analysis of typing patterns, pauses, edits, and revisions to identify AI-generated content.
               </p>
             </div>
             
             {/* Feature 3 */}
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
-                <BookOpen className="h-6 w-6 text-primary" />
+                <Shield className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Integrated Rubrics</h3>
+              <h3 className="text-xl font-semibold mb-2">Citation & Source Controls</h3>
               <p className="text-muted-foreground">
-                Students can view grading rubrics while writing, ensuring they understand expectations and requirements.
+                Advanced copy-paste tracking and citation management across different domains for academic integrity.
               </p>
             </div>
             
             {/* Feature 4 */}
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
-                <PieChart className="h-6 w-6 text-primary" />
+                <User className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">AI Detection</h3>
+              <h3 className="text-xl font-semibold mb-2">Simple Authentication</h3>
               <p className="text-muted-foreground">
-                Sophisticated keystroke analysis helps identify potential AI-generated content for educational integrity.
+                Easy access for students with streamlined authentication, while educators enjoy secure institutional login.
               </p>
             </div>
             
             {/* Feature 5 */}
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
-                <Shield className="h-6 w-6 text-primary" />
+                <Lightbulb className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Citation Controls</h3>
+              <h3 className="text-xl font-semibold mb-2">Pattern Analysis</h3>
               <p className="text-muted-foreground">
-                Controlled copy-paste feature for quotes requires teacher approval, promoting proper citation practices.
+                Machine learning algorithms that learn and adapt to individual typing patterns for higher accuracy.
               </p>
             </div>
             
             {/* Feature 6 */}
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
-                <Layers className="h-6 w-6 text-primary" />
+                <FileCode className="h-6 w-6 text-primary" />
               </div>
               <h3 className="text-xl font-semibold mb-2">Comprehensive Dashboard</h3>
               <p className="text-muted-foreground">
-                Teachers can view all classes, assignments, and detailed analytics on student writing patterns.
+                Detailed analytics on student work across different domains with visual indicators of potential AI usage.
               </p>
             </div>
           </div>
         </div>
       </section>
       
-      {/* For Teachers Section */}
-      <section id="teachers" className="py-20">
+      {/* Applications Section */}
+      <section id="applications" className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold mb-4">Applications</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Rawk AI adapts to different educational contexts with specialized environments — with more to come
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Essay Writing */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border relative">
+              <div className="absolute top-4 right-4 bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
+                Available Now
+              </div>
+              <div className="bg-blue-100 text-blue-700 w-12 h-12 flex items-center justify-center rounded-full mb-4">
+                <Edit3 className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Essay Writing</h3>
+              <p className="text-muted-foreground mb-4">
+                A distraction-free writing environment with integrated rubrics and citation tools for humanities and social sciences.
+              </p>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                  <span>Real-time keystroke analysis</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                  <span>Citation management</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                  <span>Detailed revision history</span>
+                </li>
+              </ul>
+            </div>
+            
+            {/* Code Editor */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 bg-blue-500 text-white text-center py-1 rotate-45 translate-y-3 translate-x-8 text-xs font-semibold shadow-md">
+                Coming Soon
+              </div>
+              <div className="bg-purple-100 text-purple-700 w-12 h-12 flex items-center justify-center rounded-full mb-4">
+                <Code className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Code Editor</h3>
+              <p className="text-muted-foreground mb-4">
+                Specialized IDE with language support, syntax highlighting, and unique keystroke pattern analysis for computer science courses.
+              </p>
+              <ul className="space-y-2 text-sm opacity-75">
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <span>Code-specific pattern detection</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <span>Multi-language support</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <span>Plagiarism detection</span>
+                </li>
+              </ul>
+            </div>
+            
+            {/* LaTeX Editor */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 bg-blue-500 text-white text-center py-1 rotate-45 translate-y-3 translate-x-8 text-xs font-semibold shadow-md">
+                Coming Soon
+              </div>
+              <div className="bg-green-100 text-green-700 w-12 h-12 flex items-center justify-center rounded-full mb-4">
+                <FileCode className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">LaTeX Editor</h3>
+              <p className="text-muted-foreground mb-4">
+                Mathematical equation editor with LaTeX support for STEM courses, including specialized analysis of equation entry patterns.
+              </p>
+              <ul className="space-y-2 text-sm opacity-75">
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <span>LaTeX syntax support</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <span>Equation pattern analysis</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <span>Real-time rendering</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="mt-12 text-center">
+            <p className="text-muted-foreground">
+              Our roadmap includes expanding Rawk AI's capabilities to cover more educational contexts. 
+              <br />Want to be notified when new editors are released? <a href="/auth?tab=register" className="text-primary hover:underline">Sign up for updates</a>.
+            </p>
+          </div>
+        </div>
+      </section>
+      
+      {/* For Educators Section */}
+      <section id="educators" className="bg-gray-50 py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold mb-6">For Teachers</h2>
+              <h2 className="text-3xl font-bold mb-6">For Educators</h2>
               <p className="text-lg mb-6">
-                The teacher view of WriteTrack is designed to provide a comprehensive dashboard that displays all their classes and corresponding student assignments.
+                Rawk AI provides educators with powerful tools to detect AI-generated content in essays now, with code and mathematical content support coming soon—helping maintain academic integrity in the age of generative AI.
               </p>
               <ul className="space-y-4">
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Secure authentication with school email and password</span>
+                  <span>Comprehensive dashboard with detailed keystroke analytics</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Detailed breakdown of student essays including submission dates and grades</span>
+                  <span>Essay content analysis with AI detection capabilities</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>AI-detection insights based on real-time keystroke tracking</span>
+                  <span>Visual timeline of student work with anomaly highlighting</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Timeline analysis showing when students logged in, began writing, and completed essays</span>
+                  <span>Configurable detection sensitivity for different assignments</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Monitor and approve student citations for academic integrity</span>
+                  <span>Integrated grading and feedback tools</span>
                 </li>
               </ul>
             </div>
             <div className="bg-gray-100 p-8 rounded-lg flex justify-center items-center">
               <img 
                 src="/teacher-dashboard.png" 
-                alt="Teacher Dashboard" 
+                alt="Educator Dashboard" 
                 className="rounded shadow-lg max-w-full h-auto"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -209,7 +315,7 @@ export default function LandingPage() {
       </section>
       
       {/* For Students Section */}
-      <section id="students" className="bg-gray-50 py-20">
+      <section id="students" className="py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="order-2 md:order-1 bg-gray-100 p-8 rounded-lg flex justify-center items-center">
@@ -226,28 +332,28 @@ export default function LandingPage() {
             <div className="order-1 md:order-2">
               <h2 className="text-3xl font-bold mb-6">For Students</h2>
               <p className="text-lg mb-6">
-                Students enjoy a streamlined, focused writing experience that helps them produce their best work while maintaining academic integrity.
+                Students benefit from our essay writing environment today, with specialized tools for different subjects coming soon to help them demonstrate their authentic work and understanding.
               </p>
               <ul className="space-y-4">
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Simple login with student ID for quick access</span>
+                  <span>Distraction-free essay writing environment</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Distraction-free text editor focused on content creation</span>
+                  <span>Proper citation and reference management tools</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Split-screen view with writing area and grading rubric</span>
+                  <span>Intuitive interface with focused writing features</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Specialized citation box for properly referencing external sources</span>
+                  <span>Calendar system for tracking assignments across all courses</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Calendar view to track assignment due dates and completion status</span>
+                  <span>Simple login and seamless submission process</span>
                 </li>
               </ul>
             </div>
@@ -258,9 +364,9 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="py-20 bg-primary text-white">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-6">Ready to Get Started?</h2>
+          <h2 className="text-3xl font-bold mb-6">Ready to Ensure Academic Integrity?</h2>
           <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
-            Join WriteTrack today and transform the way you write, teach, and learn.
+            Join Rawk AI today to detect AI-generated essays with our advanced keystroke analysis, and be first to access our code and LaTeX editors when they launch.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" variant="secondary">
@@ -279,18 +385,19 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <img src="/logo.svg" alt="WriteTrack Logo" className="h-8 w-8" />
-                <span className="text-xl font-bold text-white">WriteTrack</span>
+                <img src="/logo.svg" alt="Rawk AI Logo" className="h-8 w-8" />
+                <span className="text-xl font-bold text-white">Rawk AI</span>
               </div>
               <p className="max-w-md">
-                Enhancing the essay-writing experience for students while providing teachers with valuable insights into student progress.
+                Advanced keystroke analysis for detecting AI-generated content in essays, with upcoming support for code and mathematical equations, helping educators maintain academic integrity.
               </p>
             </div>
             <div>
               <h3 className="text-white font-semibold mb-4">Quick Links</h3>
               <ul className="space-y-2">
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
-                <li><a href="#teachers" className="hover:text-white transition-colors">For Teachers</a></li>
+                <li><a href="#applications" className="hover:text-white transition-colors">Applications</a></li>
+                <li><a href="#educators" className="hover:text-white transition-colors">For Educators</a></li>
                 <li><a href="#students" className="hover:text-white transition-colors">For Students</a></li>
                 <li><Link href="/auth" className="hover:text-white transition-colors">Login / Register</Link></li>
               </ul>
@@ -298,14 +405,14 @@ export default function LandingPage() {
             <div>
               <h3 className="text-white font-semibold mb-4">Contact</h3>
               <ul className="space-y-2">
-                <li>Email: info@writetrack.edu</li>
+                <li>Email: info@rawkai.edu</li>
                 <li>Phone: (555) 123-4567</li>
-                <li>Address: 123 Education Ave, Learning City</li>
+                <li>Address: 123 Innovation Ave, Tech City</li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-12 pt-6 text-center">
-            <p>&copy; {new Date().getFullYear()} WriteTrack. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Rawk AI. All rights reserved.</p>
           </div>
         </div>
       </footer>

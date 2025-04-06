@@ -56,5 +56,5 @@
   <rect x="460" y="480" width="80" height="10" rx="2" fill="#E2E8F0"/>
   <rect x="560" y="480" width="60" height="20" rx="4" fill="#F59E0B"/>
   
-  <text x="400" y="290" font-family="Arial" font-size="16" fill="#94A3B8" text-anchor="middle">Teacher Dashboard</text>
+  <text x="400" y="290" font-family="Arial" font-size="16" fill="#94A3B8" text-anchor="middle">Rawk AI Analytics Dashboard</text>
 </svg> 
