@@ -78,10 +78,11 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
       // Update the last saved timestamp from the server response
       setLastSaved(new Date(data.submittedAt));
       
-      toast({
-        title: "Success",
-        description: "Your draft has been saved",
-      });
+      // toast({
+      //   title: "Success",
+      //   description: "Your draft has been saved",
+      // });
+
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
     },
     onError: (error: Error) => {
@@ -145,81 +146,83 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
     },
   });
 
-  // Auto-save functionality
-  useEffect(() => {
-    if (!isPastDue && initialDraft?.is_draft !== false && !isSaving) {
-      if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer);
-      }
+  // // Auto-save functionality
+  // useEffect(() => {
+  //   if (!isPastDue && initialDraft?.is_draft !== false && !isSaving) {
+  //     if (autoSaveTimer) {
+  //       clearTimeout(autoSaveTimer);
+  //     }
 
-      const timer = setTimeout(() => {
-        if (content) {
-          setIsSaving(true);
-          saveDraftMutation.mutate(
-            { content, keystrokes, quotes },
-            {
-              onSuccess: () => {
-                // Refresh the draft data
-                queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
-              },
-              onSettled: () => {
-                setIsSaving(false);
-              }
-            }
-          );
-        }
-      }, 15000); // Auto-save after 15 seconds of inactivity
+  //     const timer = setTimeout(() => {
+  //       if (content) {
+  //         setIsSaving(true);
+  //         saveDraftMutation.mutate(
+  //           { content, keystrokes, quotes },
+  //           {
+  //             onSuccess: () => {
+  //               // Refresh the draft data
+  //               queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
+  //             },
+  //             onSettled: () => {
+  //               setIsSaving(false);
+  //             }
+  //           }
+  //         );
+  //       }
+  //     }, 15000); // Auto-save after 15 seconds of inactivity
 
-      setAutoSaveTimer(timer);
-    }
+  //     setAutoSaveTimer(timer);
+  //   }
 
-    return () => {
-      if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer);
-      }
-    };
-  }, [content, keystrokes, quotes, isSaving, isPastDue, initialDraft?.is_draft]);
+  //   return () => {
+  //     if (autoSaveTimer) {
+  //       clearTimeout(autoSaveTimer);
+  //     }
+  //   };
+  // }, [content, keystrokes, quotes, isSaving, isPastDue, initialDraft?.is_draft]);
   
-  // Save content when user leaves/unmounts the component
-  useEffect(() => {
-    // Add a beforeunload event to catch browser/tab closes
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!isPastDue && initialDraft?.is_draft !== false && content && !isSaving) {
-        // Save immediately before the page unloads
-        fetch('/api/submissions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            assignmentId: assignment.id,
-            content,
-            keystrokes,
-            quotes,
-            is_draft: true
-          }),
-          // Use keepalive to ensure the request completes even if the page is unloading
-          keepalive: true
-        });
+  // // Save content when user leaves/unmounts the component
+  // useEffect(() => {
+  //   // Add a beforeunload event to catch browser/tab closes
+  //   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  //     if (!isPastDue && initialDraft?.is_draft !== false && content && !isSaving) {
+  //       // Save immediately before the page unloads
+  //       fetch('/api/submissions', {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //         body: JSON.stringify({
+  //           assignmentId: assignment.id,
+  //           content,
+  //           keystrokes,
+  //           quotes,
+  //           is_draft: true
+  //         }),
+  //         // Use keepalive to ensure the request completes even if the page is unloading
+  //         keepalive: true
+  //       });
         
-        // Standard beforeunload behavior to prompt user confirmation
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
+  //       // Standard beforeunload behavior to prompt user confirmation
+  //       e.preventDefault();
+  //       e.returnValue = '';
+  //     }
+  //   };
     
-    window.addEventListener('beforeunload', handleBeforeUnload);
+  //   window.addEventListener('beforeunload', handleBeforeUnload);
     
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+  //   return () => {
+  //     window.removeEventListener('beforeunload', handleBeforeUnload);
       
-      // Save draft when component unmounts (user navigates away or logs out)
-      if (!isPastDue && initialDraft?.is_draft !== false && content && !isSaving) {
-        setIsSaving(true);
-        saveDraftMutation.mutate({ content, keystrokes, quotes });
-      }
-    };
-  }, [content, keystrokes, quotes, isPastDue, initialDraft?.is_draft, assignment.id, isSaving]);
+  //     // Save draft when component unmounts (user navigates away or logs out)
+  //     if (!isPastDue && initialDraft?.is_draft !== false && content && !isSaving) {
+  //       setIsSaving(true);
+  //       saveDraftMutation.mutate({ content, keystrokes, quotes });
+  //     }
+  //   };
+  // }, [content, keystrokes, quotes, isPastDue, initialDraft?.is_draft, assignment.id, isSaving]);
+
+  
 
   const handleSaveDraft = () => {
     // Manual save should always work regardless of isSaving state
@@ -231,11 +234,11 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
           // Refresh the assignment data to confirm it's saved properly
           queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
           
-          toast({
-            title: "Draft saved successfully",
-            description: "Your work has been saved to the server.",
-            variant: "default"
-          });
+          // toast({
+          //   title: "Draft saved successfully",
+          //   description: "Your work has been saved to the server.",
+          //   variant: "default"
+          // });
         },
         onSettled: () => {
           setIsSaving(false);
