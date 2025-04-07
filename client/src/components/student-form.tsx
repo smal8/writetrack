@@ -37,10 +37,6 @@ export function StudentForm() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast({
-        title: "Success",
-        description: "Student account created successfully",
-      });
       setTempPassword(data.tempPassword);
       setShowPassword(true);
       queryClient.invalidateQueries({ queryKey: ["/api/students"] });
