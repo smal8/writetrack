@@ -114,10 +114,6 @@ export function AddStudentToClassForm({ classId }: AddStudentToClassFormProps) {
       return res.json();
     },
     onSuccess: (data) => {
-      toast({
-        title: "Success",
-        description: data.message,
-      });
       if (data.tempPassword) {
         setCredentials({
           username: `${data.studentId}@temp.edu`,
