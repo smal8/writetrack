@@ -77,11 +77,14 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Start server on port 3000
+  // Use PORT environment variable if available, otherwise use 3001
+  const port = process.env.PORT || 3001;
+  
+  // Start server
   server.listen({
-    port: 3000,
+    port,
     host: "0.0.0.0",
   }, () => {
-    log(`Server running at http://0.0.0.0:3000`);
+    log(`Server running at http://0.0.0.0:${port}`);
   });
 })();

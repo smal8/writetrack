@@ -201,7 +201,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(classStudents.studentId, studentId))
       .innerJoin(classes, eq(classes.id, classStudents.classId))
       .innerJoin(assignments, eq(assignments.classId, classes.id));
-    
+
     return records.map(record => record.assignment);
   }
 
@@ -228,7 +228,7 @@ export class DatabaseStorage implements IStorage {
         content: submission.content,
         keystrokes: submission.keystrokes,
         quotes: submission.quotes || null,
-        submittedAt: new Date(),
+        submittedAt: submission.submittedAt || new Date(), // Added submittedAt with default value
         grade: null,
         feedback: null,
         is_draft: true
@@ -295,7 +295,8 @@ export class DatabaseStorage implements IStorage {
         content,
         keystrokes,
         quotes: quotes || null,
-        is_draft: true
+        is_draft: true,
+        submittedAt: new Date() // Update timestamp on every update
       })
       .where(eq(submissions.id, id))
       .returning();
@@ -344,9 +345,9 @@ export class DatabaseStorage implements IStorage {
       .select({ count: count() })
       .from(submissionVersions)
       .where(eq(submissionVersions.submissionId, version.submissionId));
-    
+
     const versionNumber = (existingVersions[0]?.count || 0) + 1;
-    
+
     const [record] = await db
       .insert(submissionVersions)
       .values({
@@ -356,7 +357,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: new Date()
       })
       .returning();
-    
+
     return record;
   }
 
@@ -373,7 +374,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(submissionVersions)
       .where(eq(submissionVersions.id, versionId));
-    
+
     return version;
   }
 
@@ -390,11 +391,12 @@ export class DatabaseStorage implements IStorage {
       .set({
         content: version.content,
         keystrokes: version.keystrokes,
-        quotes: version.quotes
+        quotes: version.quotes,
+        submittedAt: new Date() //Update timestamp on restore
       })
       .where(eq(submissions.id, submissionId))
       .returning();
-    
+
     return submission;
   }
 

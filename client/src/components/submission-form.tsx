@@ -50,10 +50,6 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
   const [_, setLocation] = useLocation();
   const [content, setContent] = useState(initialDraft?.content || "");
   const [keystrokes, setKeystrokes] = useState<any[]>(initialDraft?.keystrokes as any[] || []);
-  const [quotes, setQuotes] = useState<QuoteItem[]>(initialDraft?.quotes as QuoteItem[] || []);
-  const [showQuoteDialog, setShowQuoteDialog] = useState(false);
-  const [newQuote, setNewQuote] = useState<QuoteItem>({ text: "", source: "", insertedAt: "" });
-  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(initialDraft?.submittedAt ? new Date(initialDraft.submittedAt) : null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -61,16 +57,17 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
   const isPastDue = new Date(assignment.dueDate) < new Date();
 
   const saveDraftMutation = useMutation({
-    mutationFn: async (data: SubmissionData) => {
+    mutationFn: async (data: { content: string, keystrokes: any[] }) => {
       if (isPastDue) {
         throw new Error("Assignment deadline has passed");
       }
+      const currentTime = new Date();
       const res = await apiRequest("POST", "/api/submissions", {
         assignmentId: assignment.id,
         content: data.content,
         keystrokes: data.keystrokes,
-        quotes: data.quotes || quotes,
-        is_draft: true
+        is_draft: true,
+        submittedAt: currentTime.toISOString()
       });
       return res.json();
     },
@@ -225,20 +222,28 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
   
 
   const handleSaveDraft = () => {
-    // Manual save should always work regardless of isSaving state
     setIsSaving(true);
+    const currentContent = content;
+    const currentKeystrokes = keystrokes;
+    
     saveDraftMutation.mutate(
-      { content, keystrokes, quotes },
+      { content: currentContent, keystrokes: currentKeystrokes },
       {
-        onSuccess: () => {
-          // Refresh the assignment data to confirm it's saved properly
-          queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
-          
-          // toast({
-          //   title: "Draft saved successfully",
-          //   description: "Your work has been saved to the server.",
-          //   variant: "default"
-          // });
+        onSuccess: (data) => {
+          setLastSaved(new Date(data.submittedAt));
+          // Don't refetch, just update the cache
+          queryClient.setQueryData(
+            [`/api/assignments/${assignment.id}/draft`],
+            {
+              ...data,
+              content: currentContent,
+              keystrokes: currentKeystrokes
+            }
+          );
+          toast({
+            title: "Draft saved",
+            description: "Your work has been saved",
+          });
         },
         onSettled: () => {
           setIsSaving(false);
@@ -422,206 +427,7 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
           </Card>
         )}
 
-        {/* Quote List Display */}
-        {quotes.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-sm font-medium mb-2">Quotes Used ({quotes.length})</h3>
-            <p className="text-xs text-muted-foreground mb-2">Click on a quote to insert it at the cursor position</p>
-            <div className="space-y-2 max-h-60 overflow-y-auto p-2 border rounded-md">
-              {quotes.map((quote, index) => (
-                <div 
-                  key={index} 
-                  className="p-3 bg-muted rounded-md relative group"
-                >
-                  <div 
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer bg-background rounded-full p-1"
-                    onClick={() => {
-                      // Only allow quote deletion in draft mode
-                      if (isPastDue || initialDraft?.is_draft === false) return;
-                      
-                      // Remove the quote from the quotes array
-                      const updatedQuotes = [...quotes];
-                      updatedQuotes.splice(index, 1);
-                      setQuotes(updatedQuotes);
-                      
-                      // We need to find the quote in the content and remove it
-                      // Try using position if available, or search for the quote text
-                      const searchAndRemoveQuote = () => {
-                        // Format the quote text to search for
-                        const quoteText = `"${quote.text}" [${quote.source}${quote.page ? ` p. ${quote.page}` : ''}]`;
-                        const quoteIndex = content.indexOf(quoteText);
-                        
-                        if (quoteIndex !== -1) {
-                          // We found the quote in the content, now remove it
-                          const newContent = 
-                            content.substring(0, quoteIndex) + 
-                            content.substring(quoteIndex + quoteText.length);
-                          
-                          return newContent;
-                        }
-                        return null; // Quote not found
-                      };
-                      
-                      // Check if position is tracked and valid
-                      let newContent = null;
-                      if (quote.position) {
-                        const start = quote.position.start;
-                        const end = quote.position.end;
-                        
-                        // Verify that the range actually contains the quote
-                        const extractedQuote = content.substring(start, end);
-                        if (extractedQuote.includes(quote.text) && extractedQuote.includes(quote.source)) {
-                          // Position info is correct, use it
-                          newContent = content.substring(0, start) + content.substring(end);
-                        }
-                      }
-                      
-                      // If position-based removal failed, try text-based removal
-                      if (!newContent) {
-                        newContent = searchAndRemoveQuote();
-                      }
-                      
-                      // If we successfully found and removed the quote
-                      if (newContent) {
-                        setContent(newContent);
-                        
-                        // Save the updated content
-                        setIsSaving(true);
-                        saveDraftMutation.mutate(
-                          { 
-                            content: newContent, 
-                            keystrokes, 
-                            quotes: updatedQuotes 
-                          },
-                          {
-                            onSuccess: () => {
-                              // Refresh the draft data
-                              queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
-                            },
-                            onSettled: () => {
-                              setIsSaving(false);
-                            }
-                          }
-                        );
-                        
-                        toast({
-                          title: "Quote removed",
-                          description: "The quote has been removed from your essay."
-                        });
-                      } else {
-                        // If we couldn't find the quote in the content, just update the quotes list
-                        toast({
-                          title: "Quote removed from list",
-                          description: "The quote was removed from your quotes list but couldn't be found in the essay text."
-                        });
-                        
-                        setIsSaving(true);
-                        saveDraftMutation.mutate(
-                          { 
-                            content, 
-                            keystrokes, 
-                            quotes: updatedQuotes 
-                          },
-                          {
-                            onSuccess: () => {
-                              // Refresh the draft data
-                              queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
-                            },
-                            onSettled: () => {
-                              setIsSaving(false);
-                            }
-                          }
-                        );
-                      }
-                    }}
-                  >
-                    <X className="h-3 w-3" />
-                  </div>
-                  
-                  <div 
-                    className="cursor-pointer hover:bg-accent"
-                    onClick={() => {
-                      // Don't allow inserting quotes if not in draft mode
-                      if (isPastDue || initialDraft?.is_draft === false) return;
-                      
-                      // Format the quote with the requested [source p. xxx] format without HTML
-                      const formattedQuote = `"${quote.text}" [${quote.source}${quote.page ? ` p. ${quote.page}` : ''}]`;
-                      
-                      // We're still tracking this in our system as if it were the old format
-                      // This is just for display purposes
-                      
-                      // Use the stored cursor position or default to the end
-                      const position = cursorPosition || { 
-                        start: content.length, 
-                        end: content.length 
-                      };
-                      
-                      // Insert at the cursor position
-                      const newContent = 
-                        content.substring(0, position.start) + 
-                        formattedQuote + 
-                        content.substring(position.end);
-                      
-                      setContent(newContent);
-                      
-                      // Track the position for potential deletion later
-                      const updatedQuotes = [...quotes];
-                      updatedQuotes[index] = {
-                        ...quote,
-                        position: {
-                          start: position.start,
-                          end: position.start + formattedQuote.length
-                        }
-                      };
-                      
-                      setQuotes(updatedQuotes);
-                      
-                      // Save the updated content
-                      setIsSaving(true);
-                      saveDraftMutation.mutate(
-                        { 
-                          content: newContent, 
-                          keystrokes, 
-                          quotes: updatedQuotes 
-                        },
-                        {
-                          onSuccess: () => {
-                            // Refresh the draft data
-                            queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
-                          },
-                          onSettled: () => {
-                            setIsSaving(false);
-                          }
-                        }
-                      );
-                      
-                      // Focus and position cursor after the quote
-                      setTimeout(() => {
-                        const textarea = document.querySelector('textarea');
-                        if (textarea) {
-                          textarea.focus();
-                          const newCursorPos = position.start + formattedQuote.length;
-                          textarea.setSelectionRange(newCursorPos, newCursorPos);
-                        }
-                      }, 100);
-                      
-                      toast({
-                        title: "Quote inserted",
-                        description: "Quote was inserted at the cursor position."
-                      });
-                    }}
-                  >
-                    <div className="italic text-sm">"{quote.text}"</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Source: {quote.source}
-                      {quote.page && <span> (p. {quote.page})</span>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        
 
         <div 
           onMouseUp={handleEditorClick}
@@ -641,69 +447,14 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
           />
         </div>
         
-        {/* Insert Quote Button */}
-        {!isPastDue && !(initialDraft && initialDraft.is_draft === false) && (
-          <div className="flex justify-center">
-            <Dialog open={showQuoteDialog} onOpenChange={setShowQuoteDialog}>
-              <DialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className="flex items-center gap-2"
-                  disabled={isPastDue || Boolean(initialDraft && initialDraft.is_draft === false)}
-                >
-                  <Quote className="h-4 w-4" />
-                  Insert Quote
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Insert Quote</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="quoteText">Quote Text</Label>
-                    <Textarea 
-                      id="quoteText" 
-                      placeholder="Enter the quote text..." 
-                      value={newQuote.text}
-                      onChange={(e) => setNewQuote({...newQuote, text: e.target.value})}
-                      className="min-h-[100px]"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="source">Source</Label>
-                    <Input 
-                      id="source" 
-                      placeholder="Author, Book Title, etc." 
-                      value={newQuote.source}
-                      onChange={(e) => setNewQuote({...newQuote, source: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="page">Page Number (Optional)</Label>
-                    <Input 
-                      id="page" 
-                      placeholder="e.g. 42" 
-                      value={newQuote.page || ''}
-                      onChange={(e) => setNewQuote({...newQuote, page: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowQuoteDialog(false)}>Cancel</Button>
-                  <Button onClick={handleAddQuote}>Insert Quote</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        )}
+        
 
         <div className="flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
             {saveDraftMutation.isPending 
               ? "Saving..." 
               : lastSaved 
-                ? `Last saved: ${lastSaved.toLocaleTimeString()}` 
+                ? `Last saved: ${new Date(lastSaved).toLocaleString()}` 
                 : "Not saved yet"
             }
           </div>

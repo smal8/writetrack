@@ -513,79 +513,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for existing draft
       let draft = await storage.getDraftSubmission(assignmentId, req.user.id);
 
-      // If no draft exists, create one with sample text
-      if (!draft) {
-        const sampleEssay = `Title: The Impact of Technology on Modern Education
+//       // If no draft exists, create one with sample text
+//       if (!draft) {
+//         const sampleEssay = `Title: The Impact of Technology on Modern Education
 
-In recent years, technology has revolutionized the way we learn and teach. From interactive online platforms to artificial intelligence-powered tutoring systems, the educational landscape has undergone a dramatic transformation.
+// In recent years, technology has revolutionized the way we learn and teach. From interactive online platforms to artificial intelligence-powered tutoring systems, the educational landscape has undergone a dramatic transformation.
 
-First, digital tools have made learning more accessible than ever before. Students can now access vast libraries of information from anywhere in the world, breaking down geographical barriers to education. Virtual classrooms enable real-time collaboration between students and teachers across different time zones.
+// First, digital tools have made learning more accessible than ever before. Students can now access vast libraries of information from anywhere in the world, breaking down geographical barriers to education. Virtual classrooms enable real-time collaboration between students and teachers across different time zones.
 
-Furthermore, personalized learning experiences have become possible through adaptive technologies. These systems can identify individual student needs and adjust the curriculum accordingly, ensuring that each learner progresses at their optimal pace.
+// Furthermore, personalized learning experiences have become possible through adaptive technologies. These systems can identify individual student needs and adjust the curriculum accordingly, ensuring that each learner progresses at their optimal pace.
 
-However, this technological integration also presents challenges. Issues of digital literacy, access inequality, and screen time management must be carefully considered. As we move forward, finding the right balance between traditional teaching methods and technological innovation will be crucial.
+// However, this technological integration also presents challenges. Issues of digital literacy, access inequality, and screen time management must be carefully considered. As we move forward, finding the right balance between traditional teaching methods and technological innovation will be crucial.
 
-In conclusion, while technology has undoubtedly enhanced educational opportunities, its implementation must be thoughtful and purposeful. The future of education lies in harmoniously blending the best of both traditional and digital approaches to create engaging, effective learning experiences.`;
+// In conclusion, while technology has undoubtedly enhanced educational opportunities, its implementation must be thoughtful and purposeful. The future of education lies in harmoniously blending the best of both traditional and digital approaches to create engaging, effective learning experiences.`;
 
-        const now = new Date();
-        // Create keystroke patterns that simulate copy-paste behavior
-        const sampleKeystrokes = [];
+//         const now = new Date();
+//         // Create keystroke patterns that simulate copy-paste behavior
+//         const sampleKeystrokes = [];
 
-        // First burst - normal typing
-        for (let i = 0; i < 20; i++) {
-          sampleKeystrokes.push({
-            timestamp: new Date(now.getTime() - (60000 * 30) + (i * 2000)).toISOString(), // Every 2 seconds
-            type: 'input',
-            key: String.fromCharCode(65 + (i % 26)) // A-Z keys
-          });
-        }
+//         // First burst - normal typing
+//         for (let i = 0; i < 20; i++) {
+//           sampleKeystrokes.push({
+//             timestamp: new Date(now.getTime() - (60000 * 30) + (i * 2000)).toISOString(), // Every 2 seconds
+//             type: 'input',
+//             key: String.fromCharCode(65 + (i % 26)) // A-Z keys
+//           });
+//         }
 
-        // Gap of inactivity
+//         // Gap of inactivity
 
-        // Second burst - rapid input (simulating paste)
-        for (let i = 0; i < 30; i++) {
-          sampleKeystrokes.push({
-            timestamp: new Date(now.getTime() - (60000 * 20) + (i * 100)).toISOString(), // Every 0.1 seconds
-            type: 'input',
-            key: String.fromCharCode(65 + (i % 26))
-          });
-        }
+//         // Second burst - rapid input (simulating paste)
+//         for (let i = 0; i < 30; i++) {
+//           sampleKeystrokes.push({
+//             timestamp: new Date(now.getTime() - (60000 * 20) + (i * 100)).toISOString(), // Every 0.1 seconds
+//             type: 'input',
+//             key: String.fromCharCode(65 + (i % 26))
+//           });
+//         }
 
-        // Some deletions
-        for (let i = 0; i < 5; i++) {
-          sampleKeystrokes.push({
-            timestamp: new Date(now.getTime() - (60000 * 15) + (i * 1000)).toISOString(),
-            type: 'delete'
-          });
-        }
+//         // Some deletions
+//         for (let i = 0; i < 5; i++) {
+//           sampleKeystrokes.push({
+//             timestamp: new Date(now.getTime() - (60000 * 15) + (i * 1000)).toISOString(),
+//             type: 'delete'
+//           });
+//         }
 
-        // Third burst - another paste
-        for (let i = 0; i < 25; i++) {
-          sampleKeystrokes.push({
-            timestamp: new Date(now.getTime() - (60000 * 10) + (i * 50)).toISOString(), // Every 0.05 seconds
-            type: 'input',
-            key: String.fromCharCode(65 + (i % 26))
-          });
-        }
+//         // Third burst - another paste
+//         for (let i = 0; i < 25; i++) {
+//           sampleKeystrokes.push({
+//             timestamp: new Date(now.getTime() - (60000 * 10) + (i * 50)).toISOString(), // Every 0.05 seconds
+//             type: 'input',
+//             key: String.fromCharCode(65 + (i % 26))
+//           });
+//         }
 
-        // Final normal typing
-        for (let i = 0; i < 15; i++) {
-          sampleKeystrokes.push({
-            timestamp: new Date(now.getTime() - (60000 * 5) + (i * 3000)).toISOString(), // Every 3 seconds
-            type: 'input',
-            key: String.fromCharCode(65 + (i % 26))
-          });
-        }
+//         // Final normal typing
+//         for (let i = 0; i < 15; i++) {
+//           sampleKeystrokes.push({
+//             timestamp: new Date(now.getTime() - (60000 * 5) + (i * 3000)).toISOString(), // Every 3 seconds
+//             type: 'input',
+//             key: String.fromCharCode(65 + (i % 26))
+//           });
+//         }
 
-        draft = await storage.createSubmission({
-          assignmentId,
-          studentId: req.user.id,
-          content: sampleEssay,
-          keystrokes: sampleKeystrokes,
-          quotes: [],
-          is_draft: true
-        });
-      }
+//         draft = await storage.createSubmission({
+//           assignmentId,
+//           studentId: req.user.id,
+//           content: sampleEssay,
+//           keystrokes: sampleKeystrokes,
+//           quotes: [],
+//           is_draft: true
+//         });
+//       }
 
       res.json(draft);
     } catch (err) {
