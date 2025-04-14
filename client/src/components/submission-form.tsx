@@ -1,48 +1,22 @@
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Editor } from "./editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Assignment, Submission } from "@shared/schema";
-import { Loader2, Plus, Quote, X, History } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter,
-  DialogTrigger
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { VersionHistory } from "./version-history";
 
 interface SubmissionFormProps {
   assignment: Assignment;
   initialDraft?: Submission;
 }
 
-interface QuoteItem {
-  text: string;
-  source: string;
-  page?: string;
-  insertedAt: string;
-  position?: {
-    start: number;
-    end: number;
-  };
-  index?: number;
-}
-
 interface SubmissionData {
   content: string;
   keystrokes: any[];
-  quotes?: QuoteItem[];
 }
 
 export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps) {
@@ -75,11 +49,6 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
       // Update the last saved timestamp from the server response
       setLastSaved(new Date(data.submittedAt));
       
-      // toast({
-      //   title: "Success",
-      //   description: "Your draft has been saved",
-      // });
-
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
     },
     onError: (error: Error) => {
@@ -102,7 +71,6 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
         assignmentId: assignment.id,
         content,
         keystrokes,
-        quotes,
         is_draft: true
       });
 
@@ -125,12 +93,6 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
       queryClient.invalidateQueries({ queryKey: [`/api/classes/${assignment.classId}/submissions`] });
       queryClient.invalidateQueries({ queryKey: [`/api/classes/${assignment.classId}/assignments`] });
 
-      // Clear auto-save timer
-      if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer);
-        setAutoSaveTimer(null);
-      }
-
       // Redirect to class assignments page with submitted tab active
       setLocation(`/classes/${assignment.classId}/assignments?tab=submitted`);
     },
@@ -142,84 +104,6 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
       });
     },
   });
-
-  // // Auto-save functionality
-  // useEffect(() => {
-  //   if (!isPastDue && initialDraft?.is_draft !== false && !isSaving) {
-  //     if (autoSaveTimer) {
-  //       clearTimeout(autoSaveTimer);
-  //     }
-
-  //     const timer = setTimeout(() => {
-  //       if (content) {
-  //         setIsSaving(true);
-  //         saveDraftMutation.mutate(
-  //           { content, keystrokes, quotes },
-  //           {
-  //             onSuccess: () => {
-  //               // Refresh the draft data
-  //               queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
-  //             },
-  //             onSettled: () => {
-  //               setIsSaving(false);
-  //             }
-  //           }
-  //         );
-  //       }
-  //     }, 15000); // Auto-save after 15 seconds of inactivity
-
-  //     setAutoSaveTimer(timer);
-  //   }
-
-  //   return () => {
-  //     if (autoSaveTimer) {
-  //       clearTimeout(autoSaveTimer);
-  //     }
-  //   };
-  // }, [content, keystrokes, quotes, isSaving, isPastDue, initialDraft?.is_draft]);
-  
-  // // Save content when user leaves/unmounts the component
-  // useEffect(() => {
-  //   // Add a beforeunload event to catch browser/tab closes
-  //   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-  //     if (!isPastDue && initialDraft?.is_draft !== false && content && !isSaving) {
-  //       // Save immediately before the page unloads
-  //       fetch('/api/submissions', {
-  //         method: 'POST',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //         body: JSON.stringify({
-  //           assignmentId: assignment.id,
-  //           content,
-  //           keystrokes,
-  //           quotes,
-  //           is_draft: true
-  //         }),
-  //         // Use keepalive to ensure the request completes even if the page is unloading
-  //         keepalive: true
-  //       });
-        
-  //       // Standard beforeunload behavior to prompt user confirmation
-  //       e.preventDefault();
-  //       e.returnValue = '';
-  //     }
-  //   };
-    
-  //   window.addEventListener('beforeunload', handleBeforeUnload);
-    
-  //   return () => {
-  //     window.removeEventListener('beforeunload', handleBeforeUnload);
-      
-  //     // Save draft when component unmounts (user navigates away or logs out)
-  //     if (!isPastDue && initialDraft?.is_draft !== false && content && !isSaving) {
-  //       setIsSaving(true);
-  //       saveDraftMutation.mutate({ content, keystrokes, quotes });
-  //     }
-  //   };
-  // }, [content, keystrokes, quotes, isPastDue, initialDraft?.is_draft, assignment.id, isSaving]);
-
-  
 
   const handleSaveDraft = () => {
     setIsSaving(true);
@@ -250,130 +134,6 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
         }
       }
     );
-  };
-  
-  // Store cursor position for quote insertion
-  const [cursorPosition, setCursorPosition] = useState<{start: number, end: number} | null>(null);
-  
-  // State to track if we're currently dragging over the editor
-  // No longer needed for click-to-insert functionality
-  
-  // Update cursor position when the editor textarea is focused
-  const handleEditorFocus = () => {
-    const textarea = document.querySelector('textarea');
-    if (textarea) {
-      setCursorPosition({
-        start: textarea.selectionStart,
-        end: textarea.selectionEnd
-      });
-    }
-  };
-  
-  // Update cursor position when clicked in the editor
-  const handleEditorClick = () => {
-    const textarea = document.querySelector('textarea');
-    if (textarea) {
-      setCursorPosition({
-        start: textarea.selectionStart,
-        end: textarea.selectionEnd
-      });
-    }
-  };
-  
-  // Update cursor position when selection changes in the editor
-  const handleEditorSelect = () => {
-    const textarea = document.querySelector('textarea');
-    if (textarea) {
-      setCursorPosition({
-        start: textarea.selectionStart,
-        end: textarea.selectionEnd
-      });
-    }
-  };
-  
-  // Handle quote insertion
-  const handleAddQuote = () => {
-    if (!newQuote.text || !newQuote.source) {
-      toast({
-        title: "Missing information",
-        description: "Please provide both quote text and source",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Add timestamp to the quote
-    const quoteWithTimestamp = {
-      ...newQuote,
-      insertedAt: new Date().toISOString()
-    };
-    
-    // Create a new array with the additional quote
-    const nextQuoteNumber = quotes.length + 1;
-    
-    // Format the quote with the requested [source p. xxx] format without HTML
-    const formattedQuote = `"${newQuote.text}" [${newQuote.source}${newQuote.page ? ` p. ${newQuote.page}` : ''}]`;
-    
-    // Use the stored cursor position or default to the end of the content
-    const position = cursorPosition || { 
-      start: content.length, 
-      end: content.length 
-    };
-    
-    // Insert the quote at the cursor position
-    const newContent = 
-      content.substring(0, position.start) + 
-      formattedQuote + 
-      content.substring(position.end);
-    
-    // Track the position for the new quote
-    const quoteWithPosition = {
-      ...quoteWithTimestamp,
-      position: {
-        start: position.start,
-        end: position.start + formattedQuote.length
-      }
-    };
-    
-    // Update the quotes array with the positioned quote
-    const positionedQuotes = [...quotes, quoteWithPosition];
-    
-    // Update state
-    setContent(newContent);
-    setQuotes(positionedQuotes);
-    
-    // Save immediately with the new quote
-    setIsSaving(true);
-    saveDraftMutation.mutate(
-      { 
-        content: newContent, 
-        keystrokes, 
-        quotes: positionedQuotes 
-      },
-      {
-        onSuccess: () => {
-          // Refresh the draft data
-          queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
-        },
-        onSettled: () => {
-          setIsSaving(false);
-        }
-      }
-    );
-    
-    // Reset form and close dialog
-    setNewQuote({ text: "", source: "", insertedAt: "" });
-    setShowQuoteDialog(false);
-    
-    // After quote insertion, focus the textarea and position cursor after the quote
-    setTimeout(() => {
-      const textarea = document.querySelector('textarea');
-      if (textarea) {
-        textarea.focus();
-        const newCursorPos = position.start + formattedQuote.length;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }
-    }, 100); // Small delay to ensure dialog is closed
   };
 
   const handleSubmit = () => {
@@ -427,14 +187,7 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
           </Card>
         )}
 
-        
-
-        <div 
-          onMouseUp={handleEditorClick}
-          onKeyUp={handleEditorSelect}
-          onFocus={handleEditorFocus}
-          className={`${!isPastDue && initialDraft?.is_draft !== false ? 'editor-container' : ''}`}
-        >
+        <div className="editor-container">
           <Editor
             value={content}
             onChange={(newContent, newKeystrokes) => {
@@ -447,8 +200,6 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
           />
         </div>
         
-        
-
         <div className="flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
             {saveDraftMutation.isPending 
