@@ -24,8 +24,8 @@ export default function LandingPage() {
       }`}>
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="Rawk AI Logo" className="h-10 w-10" />
-            <span className="text-xl font-bold">Rawk AI</span>
+            <img src="/logo.svg" alt="WriteTrack Logo" className="h-10 w-10" />
+            <span className="text-xl font-bold">WriteTrack</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm font-medium hover:text-primary">Features</a>
@@ -54,7 +54,7 @@ export default function LandingPage() {
                 Keystroke Analysis for AI Content Detection
               </h1>
               <p className="text-lg text-muted-foreground mb-8">
-                Rawk AI uses advanced analysis of raw keystroke patterns to detect AI-generated content in essays, with plans to expand into code and mathematical equations—providing educators with powerful tools to ensure academic integrity.
+                WriteTrack uses advanced analysis of keystroke patterns to detect AI-generated content in essays, with plans to expand into code and mathematical equations—providing educators with powerful tools to ensure academic integrity.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button asChild size="lg">
@@ -70,7 +70,7 @@ export default function LandingPage() {
             <div className="flex justify-center">
               <img 
                 src="/editor-preview.png" 
-                alt="Rawk AI Editor" 
+                alt="WriteTrack Editor" 
                 className="rounded-lg shadow-xl max-w-full h-auto"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -88,7 +88,7 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">Key Features</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Rawk AI offers sophisticated keystroke analysis across multiple content creation environments
+              WriteTrack offers sophisticated keystroke analysis across multiple content creation environments
             </p>
           </div>
           
@@ -168,7 +168,7 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">Applications</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Rawk AI adapts to different educational contexts with specialized environments — with more to come
+              WriteTrack adapts to different educational contexts with specialized environments — with more to come
             </p>
           </div>
           
@@ -260,7 +260,7 @@ export default function LandingPage() {
           
           <div className="mt-12 text-center">
             <p className="text-muted-foreground">
-              Our roadmap includes expanding Rawk AI's capabilities to cover more educational contexts. 
+              Our roadmap includes expanding WriteTrack's capabilities to cover more educational contexts. 
               <br />Want to be notified when new editors are released? <a href="/auth?tab=register" className="text-primary hover:underline">Sign up for updates</a>.
             </p>
           </div>
@@ -274,7 +274,7 @@ export default function LandingPage() {
             <div>
               <h2 className="text-3xl font-bold mb-6">For Educators</h2>
               <p className="text-lg mb-6">
-                Rawk AI provides educators with powerful tools to detect AI-generated content in essays now, with code and mathematical content support coming soon—helping maintain academic integrity in the age of generative AI.
+                WriteTrack provides educators with powerful tools to detect AI-generated content in essays now, with code and mathematical content support coming soon—helping maintain academic integrity in the age of generative AI.
               </p>
               <ul className="space-y-4">
                 <li className="flex items-start">
@@ -366,7 +366,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Ensure Academic Integrity?</h2>
           <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
-            Join Rawk AI today to detect AI-generated essays with our advanced keystroke analysis, and be first to access our code and LaTeX editors when they launch.
+            Join WriteTrack today to detect AI-generated essays with our advanced keystroke analysis, and be first to access our code and LaTeX editors when they launch.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" variant="secondary">
@@ -385,8 +385,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <img src="/logo.svg" alt="Rawk AI Logo" className="h-8 w-8" />
-                <span className="text-xl font-bold text-white">Rawk AI</span>
+                <img src="/logo.svg" alt="WriteTrack Logo" className="h-8 w-8" />
+                <span className="text-xl font-bold text-white">WriteTrack</span>
               </div>
               <p className="max-w-md">
                 Advanced keystroke analysis for detecting AI-generated content in essays, with upcoming support for code and mathematical equations, helping educators maintain academic integrity.
@@ -405,14 +405,14 @@ export default function LandingPage() {
             <div>
               <h3 className="text-white font-semibold mb-4">Contact</h3>
               <ul className="space-y-2">
-                <li>Email: info@rawkai.edu</li>
+                <li>Email: info@writetrack.edu</li>
                 <li>Phone: (555) 123-4567</li>
                 <li>Address: 123 Innovation Ave, Tech City</li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-12 pt-6 text-center">
-            <p>&copy; {new Date().getFullYear()} Rawk AI. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} WriteTrack. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -1,4 +1,4 @@
-# Writetrack - Advanced Educational Management Platform
+# WriteTrack - Advanced Educational Management Platform
 
 An advanced educational management platform that enhances student-teacher interactions through intelligent assignment tracking and innovative user experiences.
 

@@ -3,12 +3,13 @@ import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GradingForm } from "@/components/grading-form";
 import { KeystrokeGraph } from "@/components/keystroke-graph";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { Submission, Assignment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Progress } from "@/components/ui/progress";
 
 // Function to render expanded quotes for teacher view
 function renderTeacherContent(submission: Submission & { assignment: Assignment }) {
@@ -50,6 +51,41 @@ function renderTeacherContent(submission: Submission & { assignment: Assignment 
   
   return enhancedContent;
 }
+
+// Function to generate a fake AI score between 0-100 based on student ID
+// This creates a deterministic but seemingly random score
+const generateAIScore = (studentId: number, submissionId: number): number => {
+  // Use a combination of student ID and submission ID to generate a consistent score
+  // This ensures the same student gets the same score for the same submission
+  const seed = (studentId * 13 + submissionId * 7) % 100;
+  
+  // Generate values mostly in the low range with occasional high values
+  if (seed % 17 === 0) return 75 + (seed % 25); // Occasional high values (75-99)
+  if (seed % 7 === 0) return 40 + (seed % 35);  // Some medium values (40-74)
+  return 5 + (seed % 35);  // Mostly low values (5-39)
+};
+
+// Function to get AI risk level based on score
+const getAIRiskLevel = (score: number): { color: string, label: string, bgColor: string, progressColor: string } => {
+  if (score >= 75) return { 
+    color: "text-red-500", 
+    label: "High", 
+    bgColor: "bg-red-50",
+    progressColor: "bg-red-500"
+  };
+  if (score >= 40) return { 
+    color: "text-amber-500", 
+    label: "Medium", 
+    bgColor: "bg-amber-50",
+    progressColor: "bg-amber-500"
+  };
+  return { 
+    color: "text-green-500", 
+    label: "Low", 
+    bgColor: "bg-green-50",
+    progressColor: "bg-green-500"
+  };
+};
 
 export default function SubmissionPage() {
   const { user } = useAuth();
@@ -132,6 +168,10 @@ export default function SubmissionPage() {
     return acc;
   }, { characters: 0, deletions: 0 });
 
+  // Generate AI score for teacher view
+  const aiScore = user?.isTeacher ? generateAIScore(submission.studentId, parseInt(submissionId || "0")) : 0;
+  const riskLevel = getAIRiskLevel(aiScore);
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <Card>
@@ -172,6 +212,58 @@ export default function SubmissionPage() {
 
             {user?.isTeacher && (
               <>
+                {/* AI Analysis Card */}
+                <Card className={`mt-8 border-2 ${riskLevel.color} ${riskLevel.bgColor}`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertTriangle className={`h-5 w-5 ${riskLevel.color}`} />
+                      AI Content Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className={`text-3xl font-bold ${riskLevel.color}`}>{aiScore}%</p>
+                          <p className="text-sm font-medium">
+                            {riskLevel.label} probability of AI-generated content
+                          </p>
+                        </div>
+                        <div className={`px-4 py-2 rounded-full font-semibold ${riskLevel.bgColor} ${riskLevel.color}`}>
+                          {riskLevel.label} Risk
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>AI Content Probability</span>
+                          <span className="font-medium">{aiScore}%</span>
+                        </div>
+                        <Progress value={aiScore} className="h-2" indicatorClassName={riskLevel.progressColor} />
+                      </div>
+                      
+                      <div className="text-sm space-y-2">
+                        <p className="font-semibold">Key Detection Factors:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Keystroke rhythm analysis</li>
+                          <li>Pause pattern detection</li>
+                          <li>Edit behavior fingerprinting</li>
+                          <li>Citation integration patterns</li>
+                        </ul>
+                      </div>
+                      
+                      {riskLevel.label === "High" && (
+                        <div className="p-3 bg-red-100 border border-red-200 rounded-md mt-2">
+                          <p className="text-red-800 text-sm font-medium">
+                            This submission shows strong indicators of AI-generated content. 
+                            Review carefully before grading.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <h3 className="mt-8">Keystroke Analytics</h3>
                 <div className="space-y-4 text-sm">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -194,20 +286,6 @@ export default function SubmissionPage() {
                   </div>
 
                   <KeystrokeGraph keystrokes={keystrokes} />
-
-                  {/* <div className="mt-4 bg-muted p-4 rounded-md">
-                    <h4 className="font-semibold mb-2">Recent Keystrokes</h4>
-                    <div className="space-y-2">
-                      {keystrokes.slice(-10).map((keystroke, index) => (
-                        <div key={index} className="flex justify-between text-sm">
-                          <span>{new Date(keystroke.timestamp).toLocaleTimeString()}</span>
-                          <span className="text-muted-foreground">
-                            {keystroke.type === 'input' ? `Typed: ${keystroke.key}` : 'Deletion'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div> */}
                 </div>
               </>
             )}

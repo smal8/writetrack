@@ -13,5 +13,5 @@
   <rect x="60" y="390" width="600" height="14" rx="2" fill="#E2E8F0"/>
   <rect x="60" y="420" width="500" height="14" rx="2" fill="#E2E8F0"/>
   <rect x="60" y="520" width="140" height="30" rx="4" fill="#3B82F6"/>
-  <text x="400" y="300" font-family="Arial" font-size="16" fill="#94A3B8" text-anchor="middle">Rawk AI Code Editor</text>
+  <text x="400" y="300" font-family="Arial" font-size="16" fill="#94A3B8" text-anchor="middle">WriteTrack Code Editor</text>
 </svg> 
