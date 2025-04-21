@@ -8,15 +8,27 @@ import { Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
-import type { Assignment, Class, Submission } from "@shared/schema";
+import type { Assignment, Class, Submission, User } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StudentGradeBook } from "@/components/student-grade-book";
+import { TeacherGradeBook } from "@/components/teacher-grade-book";
 
 export default function ClassAssignmentsPage() {
   const { user } = useAuth();
   const [_, params] = useRoute("/classes/:id/assignments");
   const classId = parseInt(params?.id || "0");
   const [showNewAssignment, setShowNewAssignment] = useState(false);
-  const [activeTab, setActiveTab] = useState('open');
+  const [activeTab, setActiveTab] = useState(getInitialTab());
+
+  // Get initial tab from URL query params
+  function getInitialTab() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam === 'submitted' || tabParam === 'gradebook') {
+      return tabParam;
+    }
+    return 'open';
+  }
 
   const classQuery = useQuery<Class>({
     queryKey: [`/api/classes/${classId}`],
@@ -32,7 +44,12 @@ export default function ClassAssignmentsPage() {
     enabled: !!classId,
   });
 
-  if (classQuery.isLoading || assignmentsQuery.isLoading || submissionsQuery.isLoading) {
+  const studentsQuery = useQuery<User[]>({
+    queryKey: [`/api/classes/${classId}/students`],
+    enabled: !!classId,
+  });
+
+  if (classQuery.isLoading || assignmentsQuery.isLoading || submissionsQuery.isLoading || studentsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-border" />
@@ -113,8 +130,9 @@ export default function ClassAssignmentsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="open">Open Assignments</TabsTrigger>
-          <TabsTrigger value="completed">Completed Assignments</TabsTrigger>
-          {user?.isTeacher && <TabsTrigger value="gradebook">Grade Book</TabsTrigger>}
+          <TabsTrigger value="submitted">Completed Assignments</TabsTrigger>
+          {/* Show gradebook tab for both teachers and students */}
+          <TabsTrigger value="gradebook">Grade Book</TabsTrigger>
         </TabsList>
 
         <TabsContent value="open">
@@ -152,7 +170,7 @@ export default function ClassAssignmentsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="completed">
+        <TabsContent value="submitted">
           <Card>
             <CardHeader>
               <CardTitle>Completed Assignments</CardTitle>
@@ -202,51 +220,43 @@ export default function ClassAssignmentsPage() {
           </Card>
         </TabsContent>
 
-        {user?.isTeacher && (
-          <TabsContent value="gradebook">
-            <Card>
-              <CardHeader>
-                <CardTitle>Grade Book</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {assignmentsQuery.data?.map(assignment => {
-                    const submissions = submissionsQuery.data?.filter(
-                      s => s.assignmentId === assignment.id && !s.is_draft
-                    ) || [];
-
-                    const averageGrade = submissions.length > 0
-                      ? submissions.reduce((acc, s) => acc + (s.grade || 0), 0) / submissions.length
-                      : null;
-
-                    return (
-                      <div key={assignment.id} className="bg-muted p-4 rounded-lg">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="font-semibold">{assignment.title}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Due: {new Date(assignment.dueDate).toLocaleDateString()}
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Submissions: {submissions.length}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Average Grade</p>
-                            <p className="font-bold">{averageGrade?.toFixed(1) || 'N/A'}</p>
-                          </div>
-                        </div>
-                        <Button asChild>
-                          <Link to={`/assignments/${assignment.id}/grade`}>Grade Submissions</Link>
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
+        <TabsContent value="gradebook">
+          <Card>
+            <CardHeader>
+              <CardTitle>Grade Book</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {user?.isTeacher ? (
+                // Teacher gradebook view (new enhanced component)
+                classQuery.data && assignmentsQuery.data && submissionsQuery.data && studentsQuery.data ? (
+                  <TeacherGradeBook 
+                    classData={classQuery.data}
+                    assignments={assignmentsQuery.data}
+                    submissions={submissionsQuery.data}
+                    students={studentsQuery.data}
+                  />
+                ) : (
+                  <p className="text-center text-muted-foreground">
+                    Unable to load grade information.
+                  </p>
+                )
+              ) : (
+                // Student gradebook view (new component)
+                user && assignmentsQuery.data && submissionsQuery.data ? (
+                  <StudentGradeBook 
+                    assignments={assignmentsQuery.data}
+                    submissions={submissionsQuery.data}
+                    studentId={user.id}
+                  />
+                ) : (
+                  <p className="text-center text-muted-foreground">
+                    Unable to load grade information.
+                  </p>
+                )
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
