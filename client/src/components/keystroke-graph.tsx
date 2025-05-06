@@ -1,97 +1,3 @@
-// import { useState, useEffect } from "react";
-// import {
-//   LineChart,
-//   Line,
-//   XAxis,
-//   YAxis,
-//   CartesianGrid,
-//   Tooltip,
-//   ResponsiveContainer
-// } from "recharts";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-// interface KeystrokeGraphProps {
-//   keystrokes: any[];
-// }
-
-// export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
-//   const [data, setData] = useState<any[]>([]);
-
-//   useEffect(() => {
-//     // Group keystrokes by 10-second intervals for more detailed visualization
-//     const groupedData = keystrokes.reduce((acc: any[], keystroke: any) => {
-//       const time = new Date(keystroke.timestamp);
-//       const seconds = Math.floor(time.getSeconds() / 1) * 1;
-//       const timeKey = `${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-//       const existing = acc.find(item => item.time === timeKey);
-//       if (existing) {
-//         existing.count += 1;
-//         if (keystroke.type === 'input') existing.inputs += 1;
-//         if (keystroke.type === 'delete') existing.deletes += 1;
-//       } else {
-//         acc.push({ 
-//           time: timeKey, 
-//           count: 1,
-//           inputs: keystroke.type === 'input' ? 1 : 0,
-//           deletes: keystroke.type === 'delete' ? 1 : 0
-//         });
-//       }
-
-//       return acc;
-//     }, []);
-
-//     setData(groupedData.sort((a, b) => a.time.localeCompare(b.time)));
-//   }, [keystrokes]);
-
-//   if (keystrokes.length === 0) {
-//     return (
-//       <Card>
-//         <CardHeader>
-//           <CardTitle>Editing Activity</CardTitle>
-//         </CardHeader>
-//         <CardContent>
-//           <p className="text-sm text-muted-foreground">No editing activity recorded yet.</p>
-//         </CardContent>
-//       </Card>
-//     );
-//   }
-//   return (
-//     <Card>
-//       <CardHeader>
-//         <CardTitle>Editing Activity Over Time</CardTitle>
-//       </CardHeader>
-//       <CardContent>
-//         <div className="h-[300px] border border-border rounded-md p-4">
-//           <ResponsiveContainer width="100%" height="100%">
-//             <LineChart data={data}>
-//               <CartesianGrid strokeDasharray="3 3" />
-//               <XAxis 
-//                 dataKey="time" 
-//                 tick={{ fontSize: 12 }}
-//                 interval="preserveStartEnd"
-//               />
-//               <YAxis />
-//               <Tooltip 
-//                 labelFormatter={(label) => `Time: ${label}`}
-//                 formatter={(value, name) => [`${value} keystrokes`, name]}
-//               />
-//               <Line 
-//                 type="natural" 
-//                 dataKey="count" 
-//                 stroke="hsl(var(--primary))" 
-//                 name="Keystrokes"
-//                 strokeWidth={2}
-//                 dot={false}
-//                 animationDuration={300}
-//               />
-//             </LineChart>
-//           </ResponsiveContainer>
-//         </div>
-//       </CardContent>
-//     </Card>
-//   );
-// }
 import { useState, useEffect, useRef } from "react";
 import {
   LineChart,
@@ -101,15 +7,17 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceArea
+  ReferenceArea,
+  ReferenceLine
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface KeystrokeGraphProps {
   keystrokes: any[];
+  onTimeRangeSelected?: (startTime: string, endTime: string, keystrokesInRange: any[]) => void;
 }
 
-export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
+export function KeystrokeGraph({ keystrokes, onTimeRangeSelected }: KeystrokeGraphProps) {
   const [data, setData] = useState<any[]>([]);
   const [left, setLeft] = useState<string | null>(null);
   const [right, setRight] = useState<string | null>(null);
@@ -119,7 +27,12 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
   const [top, setTop] = useState<number | 'auto'>('auto');
   const [zoomHistory, setZoomHistory] = useState<Array<{left: string | null, right: string | null, bottom: number | 'auto', top: number | 'auto'}>>([]);
   const chartRef = useRef<any>(null);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<{start: string, end: string} | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
 
+  // Store the keystrokes with their time buckets for easy retrieval
+  const [keystrokesByTime, setKeystrokesByTime] = useState<Record<string, any[]>>({});
+  
   useEffect(() => {
     // Group keystrokes by 1-second intervals for detailed visualization
     const groupedData = keystrokes.reduce((acc: any[], keystroke: any) => {
@@ -157,6 +70,21 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
     }));
 
     setData(indexedData);
+    
+    // Create a mapping of time buckets to original keystrokes
+    const timeMapping: Record<string, any[]> = {};
+    keystrokes.forEach(k => {
+      const time = new Date(k.timestamp);
+      const seconds = Math.floor(time.getSeconds() / 1) * 1;
+      const timeKey = `${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+      if (!timeMapping[timeKey]) {
+        timeMapping[timeKey] = [];
+      }
+      timeMapping[timeKey].push(k);
+    });
+    
+    setKeystrokesByTime(timeMapping);
   }, [keystrokes]);
 
   const getAxisYDomain = (from: string, to: string, ref: string, offset: number) => {
@@ -213,6 +141,12 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
       setRight(rightTime);
       setBottom(newBottom);
       setTop(newTop);
+      
+      // Clear any point selection
+      setSelectedPoint(null);
+      
+      // Notify parent component of time range selection
+      notifyTimeRangeSelected(leftTime, rightTime);
     }
   };
 
@@ -223,6 +157,13 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
       setRight(null);
       setTop('auto');
       setBottom('auto');
+      
+      // Clear any selected time range and point
+      setSelectedTimeRange(null);
+      setSelectedPoint(null);
+      if (onTimeRangeSelected) {
+        onTimeRangeSelected('', '', []);
+      }
       return;
     }
 
@@ -233,6 +174,20 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
     setTop(lastZoom.top);
     setBottom(lastZoom.bottom);
     setZoomHistory(zoomHistory.slice(0, -1));
+    
+    // Clear any point selection
+    setSelectedPoint(null);
+    
+    // If no time range will be active after zoom out, clear selection
+    if (!lastZoom.left || !lastZoom.right) {
+      setSelectedTimeRange(null);
+      if (onTimeRangeSelected) {
+        onTimeRangeSelected('', '', []);
+      }
+    } else {
+      // Otherwise notify parent of the new time range
+      notifyTimeRangeSelected(lastZoom.left, lastZoom.right);
+    }
   };
 
   const handleMouseDown = (e: any) => {
@@ -249,6 +204,67 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
     if (refAreaLeft && refAreaRight) {
       zoomIn();
     }
+  };
+  
+  // Function to get all keystrokes within a time range
+  const getKeystrokesInTimeRange = (startTime: string, endTime: string): any[] => {
+    if (!startTime || !endTime) return [];
+    
+    // Get all time keys between startTime and endTime
+    const timeKeys = Object.keys(keystrokesByTime)
+      .filter(timeKey => {
+        // Convert to timestamps for comparison
+        const startTimestamp = new Date(`2023-01-01 ${startTime}`).getTime();
+        const endTimestamp = new Date(`2023-01-01 ${endTime}`).getTime();
+        const keyTimestamp = new Date(`2023-01-01 ${timeKey}`).getTime();
+        
+        return keyTimestamp >= startTimestamp && keyTimestamp <= endTimestamp;
+      });
+    
+    // Collect all keystrokes from these time buckets
+    const keystrokesInRange: any[] = [];
+    timeKeys.forEach(key => {
+      keystrokesInRange.push(...keystrokesByTime[key]);
+    });
+    
+    // Sort by timestamp
+    return keystrokesInRange.sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+  };
+  
+  // Function to notify parent component of time range selection
+  const notifyTimeRangeSelected = (startTime: string, endTime: string) => {
+    if (!startTime || !endTime) return;
+    
+    // Store the selected time range
+    setSelectedTimeRange({ start: startTime, end: endTime });
+    
+    // Get all keystrokes within the selected time range
+    const keystrokesInRange = getKeystrokesInTimeRange(startTime, endTime);
+    
+    // Call the callback function if provided
+    if (onTimeRangeSelected) {
+      onTimeRangeSelected(startTime, endTime, keystrokesInRange);
+    }
+  };
+  
+  // Handle clicking on an individual dot/time point
+  const handleDotClick = (e: any) => {
+    if (!e) return;
+    
+    // Get the time of the clicked dot
+    const clickedTime = e.time;
+    
+    // Clear current zoom area to avoid confusion
+    setLeft(null);
+    setRight(null);
+    
+    // Set the selected point
+    setSelectedPoint(clickedTime);
+    
+    // Use a small time window around the clicked time (same time point)
+    notifyTimeRangeSelected(clickedTime, clickedTime);
   };
 
   if (keystrokes.length === 0) {
@@ -322,7 +338,17 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
           <span>Editing Activity Over Time</span>
           <div className="flex gap-2">
             <button 
-              onClick={() => setVerticalOffset(0)} 
+              onClick={() => {
+                setVerticalOffset(0);
+                setLeft(null);
+                setRight(null);
+                // Clear selection when resetting view
+                setSelectedTimeRange(null);
+                setSelectedPoint(null);
+                if (onTimeRangeSelected) {
+                  onTimeRangeSelected('', '', []);
+                }
+              }} 
               className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-3 py-1 rounded-md text-sm"
             >
               Reset View
@@ -336,8 +362,31 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
             </button>
           </div>
         </CardTitle>
+        {selectedTimeRange && (
+          <div className="text-sm text-muted-foreground mt-2">
+            {selectedTimeRange.start === selectedTimeRange.end ? (
+              <span className="font-medium">Selected time point: {selectedTimeRange.start}</span>
+            ) : (
+              <span>Selected time range: {selectedTimeRange.start} - {selectedTimeRange.end}</span>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent>
+        <div className="mb-2 text-sm">
+          <span className="inline-flex items-center mr-4">
+            <span className="inline-block w-3 h-3 bg-primary rounded-full mr-1"></span>
+            <span>Keystrokes</span>
+          </span>
+          
+          {selectedPoint && (
+            <span className="inline-flex items-center">
+              <span className="inline-block w-3 h-3 bg-amber-500 rounded-full mr-1"></span>
+              <span>Selected Point</span>
+            </span>
+          )}
+        </div>
+        
         <div 
           className="h-[500px] border border-border rounded-md p-4 overflow-hidden"
           onWheel={handleVerticalScroll}
@@ -398,50 +447,55 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
                 }}
               />
 
-                <Line 
-                  type="natural" 
-                  dataKey="count" 
-                  stroke="hsl(var(--primary))" 
-                  name="Keystrokes"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={false}
-                  animationDuration={300}
-                  isAnimationActive={false}
-                />
-                              {/* <Line 
+              <Line 
                 type="natural" 
                 dataKey="count" 
                 stroke="hsl(var(--primary))" 
                 name="Keystrokes"
                 strokeWidth={2}
-                // dot={{ r: 4 }}
-                // activeDot={{ r: 6, strokeWidth: 2 }}
+                dot={(props) => {
+                  const { cx, cy, payload } = props;
+                  // Make the selected point larger and highlighted
+                  const isSelected = selectedPoint && payload.time === selectedPoint;
+                  
+                  return (
+                    <circle 
+                      cx={cx} 
+                      cy={cy} 
+                      r={isSelected ? 6 : 4} 
+                      fill={isSelected ? "#f59e0b" : "hsl(var(--primary))"}
+                      stroke={isSelected ? "#f59e0b" : "none"}
+                      strokeWidth={isSelected ? 2 : 0}
+                      onClick={() => handleDotClick(payload)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  );
+                }}
+                activeDot={{ 
+                  r: 6, 
+                  strokeWidth: 2,
+                  onClick: handleDotClick // Also for active dots
+                }}
                 animationDuration={300}
                 isAnimationActive={false}
-              /> */}
-              {/* <Line 
-                type="natural" 
-                dataKey="inputs" 
-                stroke="green" 
-                name="Inputs"
-                strokeWidth={1.5}
-                // dot={{ r: 3 }}
-                // activeDot={{ r: 5, strokeWidth: 2 }}
-                animationDuration={300}
-                isAnimationActive={false}
-              /> */}
-              {/* <Line 
-                type="natural" 
-                dataKey="deletes" 
-                stroke="red" 
-                name="Deletes"
-                strokeWidth={1.5}
-                // dot={{ r: 3 }}
-                // activeDot={{ r: 5, strokeWidth: 2 }}
-                animationDuration={300}
-                isAnimationActive={false}
-              /> */}
+              />
+              
+              {/* Show a vertical reference line for the selected point */}
+              {selectedPoint && (
+                <ReferenceLine
+                  x={selectedPoint}
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  strokeDasharray="3 3"
+                  label={{
+                    value: "Selected Time",
+                    position: "top",
+                    fill: "#f59e0b",
+                    fontSize: 12
+                  }}
+                />
+              )}
+              
               {refAreaLeft && refAreaRight && (
                 <ReferenceArea
                   x1={refAreaLeft}
@@ -456,8 +510,9 @@ export function KeystrokeGraph({ keystrokes }: KeystrokeGraphProps) {
         </div>
         <div className="mt-2 text-xs text-muted-foreground">
           <p>
-            <strong>Controls:</strong> Click and drag horizontally to zoom in. Use mouse wheel to scroll vertically.
-            Use "Reset View" to center vertically and "Zoom Out" to return to previous zoom level.
+            <strong>Controls:</strong> Click on individual points to see what was written at that specific time.
+            Click and drag horizontally to zoom in and select a time range. 
+            Use mouse wheel to scroll vertically. Use "Reset View" to clear the selection and "Zoom Out" to return to previous zoom level.
           </p>
         </div>
       </CardContent>

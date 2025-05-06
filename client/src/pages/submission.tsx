@@ -3,13 +3,14 @@ import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GradingForm } from "@/components/grading-form";
 import { KeystrokeGraph } from "@/components/keystroke-graph";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { Submission, Assignment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Progress } from "@/components/ui/progress";
+import { useState, useCallback, useEffect } from "react";
 
 // Function to render expanded quotes for teacher view
 function renderTeacherContent(submission: Submission & { assignment: Assignment }) {
@@ -87,12 +88,39 @@ const getAIRiskLevel = (score: number): { color: string, label: string, bgColor:
   };
 };
 
+// Interface for change fragments that track text changes
+interface TextChange {
+  timestamp: string;
+  position: number;
+  text: string;
+  isDelete: boolean;
+  length: number;
+}
+
 export default function SubmissionPage() {
   const { user } = useAuth();
   const [_, params] = useRoute("/submissions/:id");
   const submissionId = params?.id;
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  
+  // State for the selected keystroke time range
+  const [selectedKeystrokeRange, setSelectedKeystrokeRange] = useState<{
+    startTime: string;
+    endTime: string;
+    keystrokes: any[];
+  } | null>(null);
+  
+  // State for the essay content at different points in time
+  const [essayAtTime, setEssayAtTime] = useState<{
+    before: string;
+    during: string;
+    after: string;
+    changes: TextChange[];
+  } | null>(null);
+  
+  // State to track view mode
+  const [viewMode, setViewMode] = useState<'full' | 'timeSelection'>('full');
 
   const submissionQuery = useQuery<Submission & { assignment: Assignment }>({
     queryKey: [`/api/submissions/${submissionId}`],
@@ -131,6 +159,128 @@ export default function SubmissionPage() {
       });
     },
   });
+  
+  // Function to handle when a time range is selected in the keystroke graph
+  const handleTimeRangeSelected = useCallback((startTime: string, endTime: string, keystrokesInRange: any[]) => {
+    if (!startTime || !endTime || keystrokesInRange.length === 0) {
+      // Reset the selection if empty
+      setSelectedKeystrokeRange(null);
+      setEssayAtTime(null);
+      setViewMode('full');
+      return;
+    }
+    
+    // Set the selected time range
+    setSelectedKeystrokeRange({
+      startTime,
+      endTime,
+      keystrokes: keystrokesInRange,
+    });
+    
+    // Change the view mode
+    setViewMode('timeSelection');
+  }, []);
+  
+  // Function to reconstruct essay content at specific time points
+  const reconstructEssayAtTimePoints = useCallback((allKeystrokes: any[], targetKeystrokes: any[]) => {
+    if (!allKeystrokes.length || !targetKeystrokes.length) return null;
+    
+    // Sort all keystrokes by timestamp
+    const sortedKeystrokes = [...allKeystrokes].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    
+    // Find the range of keystrokes for our target time period
+    const targetStartTime = new Date(targetKeystrokes[0].timestamp).getTime();
+    const targetEndTime = new Date(targetKeystrokes[targetKeystrokes.length - 1].timestamp).getTime();
+    
+    // Initialize the essay content
+    let content = '';
+    let beforeContent = '';
+    let duringContent = '';
+    const changes: TextChange[] = [];
+    let currentPosition = 0;
+    
+    // Apply all keystrokes sequentially to reconstruct content at different points
+    for (let i = 0; i < sortedKeystrokes.length; i++) {
+      const keystroke = sortedKeystrokes[i];
+      const keystrokeTime = new Date(keystroke.timestamp).getTime();
+      
+      // Determine if this keystroke is before, during, or after our target range
+      const timePhase = 
+        keystrokeTime < targetStartTime ? 'before' :
+        keystrokeTime <= targetEndTime ? 'during' :
+        'after';
+      
+      if (keystroke.type === 'input' && keystroke.key && keystroke.key.length === 1) {
+        // Track the change
+        if (timePhase === 'during') {
+          changes.push({
+            timestamp: keystroke.timestamp,
+            position: currentPosition,
+            text: keystroke.key,
+            isDelete: false,
+            length: 1
+          });
+        }
+        
+        // Add the character
+        content += keystroke.key;
+        currentPosition++;
+        
+        // Update the content for this phase
+        if (timePhase === 'before') {
+          beforeContent = content;
+        } else if (timePhase === 'during') {
+          duringContent = content;
+        }
+      } 
+      else if (keystroke.type === 'delete') {
+        if (content.length > 0) {
+          // Track the deletion
+          if (timePhase === 'during') {
+            changes.push({
+              timestamp: keystroke.timestamp,
+              position: currentPosition - 1,
+              text: content[content.length - 1],
+              isDelete: true,
+              length: 1
+            });
+          }
+          
+          // Remove the last character
+          content = content.slice(0, -1);
+          currentPosition--;
+          
+          // Update the content for this phase
+          if (timePhase === 'before') {
+            beforeContent = content;
+          } else if (timePhase === 'during') {
+            duringContent = content;
+          }
+        }
+      }
+    }
+    
+    return {
+      before: beforeContent,
+      during: duringContent,
+      after: content,
+      changes
+    };
+  }, []);
+  
+  // Effect to reconstruct essay when time range changes
+  useEffect(() => {
+    if (submissionQuery.data && selectedKeystrokeRange) {
+      const reconstructed = reconstructEssayAtTimePoints(
+        submissionQuery.data.keystrokes as any[], 
+        selectedKeystrokeRange.keystrokes
+      );
+      
+      setEssayAtTime(reconstructed);
+    }
+  }, [selectedKeystrokeRange, submissionQuery.data, reconstructEssayAtTimePoints]);
 
   if (submissionQuery.isLoading) {
     return (
@@ -171,6 +321,124 @@ export default function SubmissionPage() {
   // Generate AI score for teacher view
   const aiScore = user?.isTeacher ? generateAIScore(submission.studentId, parseInt(submissionId || "0")) : 0;
   const riskLevel = getAIRiskLevel(aiScore);
+  
+  // Function to render changes with highlighting
+  const renderEssayWithHighlights = () => {
+    if (!essayAtTime || !selectedKeystrokeRange) return (
+      <div className="mt-4">
+        <div className="bg-white rounded-md border p-4 min-h-[200px] whitespace-pre-wrap">
+          {submission?.content || ""}
+        </div>
+      </div>
+    );
+
+    // Create an array marking the positions that need highlighting
+    const highlightedPositions: boolean[] = [];
+    
+    if (essayAtTime.during) {
+      // Initialize all positions as not highlighted
+      highlightedPositions.length = essayAtTime.during.length;
+      highlightedPositions.fill(false);
+      
+      // Mark positions that were changed during the selected time period
+      essayAtTime.changes.forEach(change => {
+        if (!change.isDelete) {
+          // For additions, mark the position where text was added
+          highlightedPositions[change.position] = true;
+        }
+      });
+    }
+    
+    // Calculate the progress percentage of the selected timestamp within the overall timeline
+    const calculateProgress = () => {
+      if (!keystrokes || keystrokes.length === 0) return 0;
+      
+      const firstTime = new Date(keystrokes[0].timestamp).getTime();
+      const lastTime = new Date(keystrokes[keystrokes.length - 1].timestamp).getTime();
+      const selectedTime = new Date(selectedKeystrokeRange.endTime).getTime();
+      
+      const totalDuration = lastTime - firstTime;
+      if (totalDuration === 0) return 100;
+      
+      const progress = Math.min(100, Math.max(0, ((selectedTime - firstTime) / totalDuration) * 100));
+      return Math.round(progress);
+    };
+    
+    const progress = calculateProgress();
+
+    return (
+      <div className="mt-4 space-y-6">
+        {/* First, show a snapshot of the essay at the selected time */}
+        <div>
+          <h3 className="text-lg font-semibold mb-2 flex justify-between items-center">
+            <div className="flex items-center">
+              <span className="mr-2">📸</span>
+              Essay Snapshot at {new Date(selectedKeystrokeRange.endTime).toLocaleTimeString()}
+            </div>
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              <span>{progress}% through writing process</span>
+              <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+          </h3>
+          <div className="bg-slate-50 rounded-md border border-amber-500 p-4 min-h-[200px] whitespace-pre-wrap">
+            {essayAtTime.during}
+          </div>
+          <div className="mt-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setViewMode('full');
+                setSelectedKeystrokeRange(null);
+                setEssayAtTime(null);
+              }}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to full essay
+            </Button>
+          </div>
+        </div>
+        
+        {/* Show the detailed breakdown if not viewing a single point */}
+        {selectedKeystrokeRange.startTime !== selectedKeystrokeRange.endTime && (
+          <>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Content Before Selected Time Range</h3>
+              <div className="bg-white rounded-md border p-4 min-h-[200px] whitespace-pre-wrap">
+                {essayAtTime.before}
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Changes During Selected Time Range</h3>
+              <div className="bg-white rounded-md border p-4 min-h-[200px] whitespace-pre-wrap">
+                {essayAtTime.during.split('').map((char, i) => (
+                  <span 
+                    key={i} 
+                    className={highlightedPositions[i] ? 'bg-yellow-200' : ''}
+                  >
+                    {char}
+                  </span>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Final Content</h3>
+              <div className="bg-white rounded-md border p-4 min-h-[200px] whitespace-pre-wrap">
+                {submission?.content || ""}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -180,12 +448,18 @@ export default function SubmissionPage() {
         </CardHeader>
         <CardContent>
           <div className="prose prose-sm max-w-none">
-            <h3>Essay Content</h3>
-            <div className="bg-secondary/10 p-6 rounded-md whitespace-pre-wrap font-mono text-base text-foreground">
-              {user?.isTeacher ? renderTeacherContent(submission) : submission.content}
-            </div>
+            {user?.isTeacher && viewMode === 'timeSelection' ? (
+              renderEssayWithHighlights()
+            ) : (
+              <>
+                <h3>Essay Content</h3>
+                <div className="bg-secondary/10 p-6 rounded-md whitespace-pre-wrap font-mono text-base text-foreground">
+                  {user?.isTeacher ? renderTeacherContent(submission) : submission.content}
+                </div>
+              </>
+            )}
 
-            {user?.isTeacher && submission.quotes && submission.quotes.length > 0 && (
+            {user?.isTeacher && submission.quotes && submission.quotes.length > 0 && viewMode === 'full' && (
               <>
                 <h3 className="mt-8">Quotes Used</h3>
                 <div className="space-y-4 mb-6">
@@ -212,57 +486,61 @@ export default function SubmissionPage() {
 
             {user?.isTeacher && (
               <>
-                {/* AI Analysis Card */}
-                <Card className={`mt-8 border-2 ${riskLevel.color} ${riskLevel.bgColor}`}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2">
-                      <AlertTriangle className={`h-5 w-5 ${riskLevel.color}`} />
-                      AI Content Analysis
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className={`text-3xl font-bold ${riskLevel.color}`}>{aiScore}%</p>
-                          <p className="text-sm font-medium">
-                            {riskLevel.label} probability of AI-generated content
-                          </p>
+                {viewMode === 'full' && (
+                  <>
+                    {/* AI Analysis Card */}
+                    <Card className={`mt-8 border-2 ${riskLevel.color} ${riskLevel.bgColor}`}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2">
+                          <AlertTriangle className={`h-5 w-5 ${riskLevel.color}`} />
+                          AI Content Analysis
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className={`text-3xl font-bold ${riskLevel.color}`}>{aiScore}%</p>
+                              <p className="text-sm font-medium">
+                                {riskLevel.label} probability of AI-generated content
+                              </p>
+                            </div>
+                            <div className={`px-4 py-2 rounded-full font-semibold ${riskLevel.bgColor} ${riskLevel.color}`}>
+                              {riskLevel.label} Risk
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>AI Content Probability</span>
+                              <span className="font-medium">{aiScore}%</span>
+                            </div>
+                            <Progress value={aiScore} className="h-2" indicatorClassName={riskLevel.progressColor} />
+                          </div>
+                          
+                          <div className="text-sm space-y-2">
+                            <p className="font-semibold">Key Detection Factors:</p>
+                            <ul className="list-disc pl-5 space-y-1">
+                              <li>Keystroke rhythm analysis</li>
+                              <li>Pause pattern detection</li>
+                              <li>Edit behavior fingerprinting</li>
+                              <li>Citation integration patterns</li>
+                            </ul>
+                          </div>
+                          
+                          {riskLevel.label === "High" && (
+                            <div className="p-3 bg-red-100 border border-red-200 rounded-md mt-2">
+                              <p className="text-red-800 text-sm font-medium">
+                                This submission shows strong indicators of AI-generated content. 
+                                Review carefully before grading.
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        <div className={`px-4 py-2 rounded-full font-semibold ${riskLevel.bgColor} ${riskLevel.color}`}>
-                          {riskLevel.label} Risk
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>AI Content Probability</span>
-                          <span className="font-medium">{aiScore}%</span>
-                        </div>
-                        <Progress value={aiScore} className="h-2" indicatorClassName={riskLevel.progressColor} />
-                      </div>
-                      
-                      <div className="text-sm space-y-2">
-                        <p className="font-semibold">Key Detection Factors:</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                          <li>Keystroke rhythm analysis</li>
-                          <li>Pause pattern detection</li>
-                          <li>Edit behavior fingerprinting</li>
-                          <li>Citation integration patterns</li>
-                        </ul>
-                      </div>
-                      
-                      {riskLevel.label === "High" && (
-                        <div className="p-3 bg-red-100 border border-red-200 rounded-md mt-2">
-                          <p className="text-red-800 text-sm font-medium">
-                            This submission shows strong indicators of AI-generated content. 
-                            Review carefully before grading.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
 
                 <h3 className="mt-8">Keystroke Analytics</h3>
                 <div className="space-y-4 text-sm">
@@ -285,7 +563,32 @@ export default function SubmissionPage() {
                     </div>
                   </div>
 
-                  <KeystrokeGraph keystrokes={keystrokes} />
+                  <KeystrokeGraph 
+                    keystrokes={keystrokes} 
+                    onTimeRangeSelected={handleTimeRangeSelected}
+                  />
+                  
+                  {selectedKeystrokeRange && (
+                    <div className="bg-muted p-4 rounded-md">
+                      <p className="font-medium mb-2">Selected Time Range Activity</p>
+                      <p>
+                        <span className="text-muted-foreground">Time: </span>
+                        {selectedKeystrokeRange.startTime} - {selectedKeystrokeRange.endTime}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Keystrokes: </span>
+                        {selectedKeystrokeRange.keystrokes.length}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Characters added: </span>
+                        {selectedKeystrokeRange.keystrokes.filter(k => k.type === 'input').length}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Deletions: </span>
+                        {selectedKeystrokeRange.keystrokes.filter(k => k.type === 'delete').length}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </>
             )}

@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import type { Assignment, Class, Submission, User } from "@shared/schema";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -20,19 +20,44 @@ import {
   FileText,
   AlertTriangle,
   BookOpen,
-  ArrowUpDown
+  ArrowUpDown,
+  Download,
+  Table2,
+  FileCheck
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "./ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "./ui/dropdown-menu";
 
 interface TeacherGradeBookProps {
   classData: Class;
   assignments: Assignment[];
   submissions: Submission[];
   students: User[];
+}
+
+// Add interface for the grade data type
+interface GradeDataType {
+  studentGrades: {
+    student: {
+      id: number;
+      studentId: string | null;
+      username: string;
+      password: string;
+      isTeacher: boolean;
+    };
+    grades: (number | null | undefined)[];
+    submissionIds: number[];
+    average: number | null;
+    completedCount: number;
+    completionPercentage: number;
+  }[];
+  assignmentAverages: (number | null)[];
+  overallAverage: number | null;
+  completionRate: number;
 }
 
 export function TeacherGradeBook({ classData, assignments, submissions, students }: TeacherGradeBookProps) {
@@ -49,7 +74,7 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
   };
 
   // Calculate all the grade data for the class
-  const gradeData = useMemo(() => {
+  const gradeData: GradeDataType = useMemo(() => {
     // Map of assignment ID to index for easy lookup
     const assignmentIndexMap = new Map(
       assignments.map((assignment, index) => [assignment.id, index])
@@ -120,10 +145,21 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
       ? allGrades.reduce((sum, grade) => sum + grade, 0) / allGrades.length
       : null;
 
+    // Calculate overall completion rate
+    const totalAssignments = students.length * assignments.length;
+    const completedAssignments = studentGrades.reduce(
+      (sum, sg) => sum + sg.completedCount,
+      0
+    );
+    
+    const completionRate =
+      totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 0;
+
     return {
       studentGrades,
       assignmentAverages,
-      overallAverage
+      overallAverage,
+      completionRate
     };
   }, [assignments, students, submissions]);
 
@@ -176,15 +212,211 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
     return 'F';
   };
 
+  // Generate CSV for gradebook
+  const generateGradebookCSV = useCallback(() => {
+    // Create headers
+    const headers = [
+      'Student Name', 
+      'Student ID'
+    ];
+    
+    // Add assignment headers
+    assignments.forEach(assignment => {
+      headers.push(`${assignment.title} (${new Date(assignment.dueDate).toLocaleDateString()})`);
+    });
+    
+    // Add overall columns
+    headers.push('Average Grade', 'Completion Rate');
+    
+    // Start with headers
+    const csvRows = [headers.join(',')];
+    
+    // Add data for each student
+    sortedStudentGrades.forEach(({ student, grades, average, completionPercentage }) => {
+      const row = [
+        `"${student.username}"`, // Quote student names in case they contain commas
+        student.studentId || '',
+      ];
+      
+      // Add grades for each assignment
+      grades.forEach(grade => {
+        if (grade !== undefined) {
+          row.push(grade !== null ? grade.toString() : 'Not Graded');
+        } else {
+          row.push('Missing');
+        }
+      });
+      
+      // Add average and completion rate
+      row.push(average !== null ? average.toFixed(1) : 'N/A');
+      row.push(`${completionPercentage.toFixed(1)}%`);
+      
+      csvRows.push(row.join(','));
+    });
+    
+    // Add class average row
+    const avgRow = ['Class Average', ''];
+    gradeData.assignmentAverages.forEach(avg => {
+      avgRow.push(avg !== null ? avg.toFixed(1) : 'N/A');
+    });
+    avgRow.push(gradeData.overallAverage !== null ? gradeData.overallAverage.toFixed(1) : 'N/A');
+    avgRow.push(`${gradeData.completionRate.toFixed(1)}%`);
+    
+    csvRows.push(avgRow.join(','));
+    
+    return csvRows.join('\n');
+  }, [sortedStudentGrades, assignments, gradeData]);
+
+  // Generate CSV for rubric template
+  const generateRubricTemplateCSV = useCallback(() => {
+    // Create the rubric template headers
+    const headers = [
+      'Criteria',
+      'Description',
+      'Weight (0-100)',
+      'Excellent (90-100)',
+      'Good (80-89)',
+      'Satisfactory (70-79)',
+      'Needs Improvement (60-69)',
+      'Unsatisfactory (0-59)'
+    ];
+    
+    // Example criteria rows
+    const exampleRows = [
+      [
+        'Content',
+        'Quality and relevance of information',
+        '25',
+        'Comprehensive, relevant, insightful',
+        'Thorough, mostly relevant',
+        'Basic content, generally relevant',
+        'Limited content, partially relevant',
+        'Minimal content, irrelevant'
+      ],
+      [
+        'Organization',
+        'Structure and flow of the essay',
+        '20',
+        'Exceptional organization and coherence',
+        'Well-organized with clear transitions',
+        'Generally organized, some transitions',
+        'Somewhat disorganized',
+        'Disorganized, difficult to follow'
+      ],
+      [
+        'Analysis',
+        'Depth of critical thinking',
+        '20',
+        'Exceptional analysis and insight',
+        'Strong analysis with some insight',
+        'Adequate analysis',
+        'Limited analysis',
+        'Minimal or no analysis'
+      ],
+      [
+        'Evidence',
+        'Support for arguments',
+        '15',
+        'Excellent use of relevant evidence',
+        'Good use of evidence',
+        'Adequate evidence',
+        'Limited evidence',
+        'Insufficient evidence'
+      ],
+      [
+        'Writing Mechanics',
+        'Grammar, spelling, punctuation',
+        '10',
+        'Error-free, sophisticated language',
+        'Few errors, clear language',
+        'Some errors, readable',
+        'Many errors, somewhat unclear',
+        'Numerous errors, difficult to read'
+      ],
+      [
+        'Citations',
+        'Proper citation format',
+        '10',
+        'Perfect citation format',
+        'Minor citation errors',
+        'Some citation errors',
+        'Many citation errors',
+        'Improper or missing citations'
+      ]
+    ];
+    
+    // Convert to CSV format
+    const csvRows = [headers.join(',')];
+    
+    exampleRows.forEach(row => {
+      // Escape any fields with commas by wrapping in quotes
+      const escapedRow = row.map(field => `"${field}"`);
+      csvRows.push(escapedRow.join(','));
+    });
+    
+    return csvRows.join('\n');
+  }, []);
+
+  // Fix the type definitions for the downloadCSV function
+  const downloadCSV = useCallback((csvContent: string, filename: string): void => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  // Handle export gradebook
+  const handleDownloadGradebook = useCallback(() => {
+    const csv = generateGradebookCSV();
+    const className = "Class"; // You could use a prop for the actual class name
+    const filename = `${className}_Gradebook_${new Date().toISOString().split('T')[0]}.csv`;
+    downloadCSV(csv, filename);
+  }, [generateGradebookCSV, downloadCSV]);
+
+  // Handle export rubric template
+  const handleDownloadRubricTemplate = useCallback(() => {
+    const csv = generateRubricTemplateCSV();
+    const filename = `Rubric_Template_${new Date().toISOString().split('T')[0]}.csv`;
+    downloadCSV(csv, filename);
+  }, [generateRubricTemplateCSV, downloadCSV]);
+
   return (
     <div className="space-y-6">
       {/* Class Summary Card */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-100">
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-blue-500" />
-            Class Grade Summary
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-blue-500" />
+              Class Grade Summary
+            </CardTitle>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleDownloadGradebook}>
+                  <Table2 className="mr-2 h-4 w-4" />
+                  Download Gradebook CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadRubricTemplate}>
+                  <FileCheck className="mr-2 h-4 w-4" />
+                  Download Rubric Template
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <CardDescription>
+            Export your gradebook as a CSV file or download a rubric template
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="flex justify-between items-center">
@@ -240,7 +472,7 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
                         style={{ 
                           height: `${Math.round(
                             (gradeData.studentGrades.filter(sg => (sg.average || 0) >= 90).length / 
-                            students.length) * 100
+                            Math.max(1, students.length)) * 100
                           )}%` 
                         }}
                       ></div>
@@ -254,7 +486,7 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
                         style={{ 
                           height: `${Math.round(
                             (gradeData.studentGrades.filter(sg => (sg.average || 0) >= 80 && (sg.average || 0) < 90).length / 
-                            students.length) * 100
+                            Math.max(1, students.length)) * 100
                           )}%` 
                         }}
                       ></div>
@@ -268,7 +500,7 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
                         style={{ 
                           height: `${Math.round(
                             (gradeData.studentGrades.filter(sg => (sg.average || 0) >= 70 && (sg.average || 0) < 80).length / 
-                            students.length) * 100
+                            Math.max(1, students.length)) * 100
                           )}%` 
                         }}
                       ></div>
@@ -282,7 +514,7 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
                         style={{ 
                           height: `${Math.round(
                             (gradeData.studentGrades.filter(sg => (sg.average || 0) >= 60 && (sg.average || 0) < 70).length / 
-                            students.length) * 100
+                            Math.max(1, students.length)) * 100
                           )}%` 
                         }}
                       ></div>
@@ -296,7 +528,7 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
                         style={{ 
                           height: `${Math.round(
                             (gradeData.studentGrades.filter(sg => (sg.average || 0) < 60).length / 
-                            students.length) * 100
+                            Math.max(1, students.length)) * 100
                           )}%` 
                         }}
                       ></div>
@@ -310,176 +542,151 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
         </CardContent>
       </Card>
 
-      {/* Grade Book Table */}
+      {/* Student Grades Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Student Grades</CardTitle>
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <UserIcon className="h-5 w-5 text-blue-500" />
+              Student Grades
+            </CardTitle>
+          </div>
         </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[60vh]">
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead 
-                      className="w-[200px] cursor-pointer"
+        <CardContent className="p-4">
+          <ScrollArea className="max-h-[600px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[220px]">
+                    <Button 
+                      variant="ghost" 
                       onClick={() => toggleSort('name')}
+                      className="flex items-center gap-1 font-medium"
                     >
-                      <div className="flex items-center">
-                        Student
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      Student
+                      <ArrowUpDown className={`ml-2 h-4 w-4 ${sortField === 'name' ? 'opacity-100' : 'opacity-30'}`} />
+                    </Button>
+                  </TableHead>
+                  {assignments.map((assignment, index) => (
+                    <TableHead key={assignment.id} className="text-center w-[100px]">
+                      <div className="truncate max-w-[100px]" title={assignment.title}>
+                        {assignment.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(assignment.dueDate).toLocaleDateString()}
                       </div>
                     </TableHead>
-                    {assignments.map(assignment => (
-                      <TableHead key={assignment.id} className="text-center min-w-[100px]">
-                        <div className="font-medium text-xs">
-                          {assignment.title}
-                          <div className="text-muted-foreground text-[10px]">
-                            {new Date(assignment.dueDate).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </TableHead>
-                    ))}
-                    <TableHead 
-                      className="text-right cursor-pointer min-w-[120px]"
+                  ))}
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
                       onClick={() => toggleSort('average')}
+                      className="flex items-center gap-1 font-medium"
                     >
-                      <div className="flex items-center justify-end">
-                        Average
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedStudentGrades.map(({ student, grades, average, submissionIds, completionPercentage }) => (
-                    <React.Fragment key={student.id}>
-                      <TableRow className="group">
-                        <TableCell>
-                          <Collapsible
-                            open={expandedStudents[student.id] || false}
-                            onOpenChange={() => toggleStudentExpanded(student.id)}
-                          >
-                            <CollapsibleTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="p-0 hover:bg-transparent -ml-1 text-left justify-start font-medium"
+                      Average
+                      <ArrowUpDown className={`ml-2 h-4 w-4 ${sortField === 'average' ? 'opacity-100' : 'opacity-30'}`} />
+                    </Button>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedStudentGrades.map(({ student, grades, submissionIds, average, completionPercentage }) => (
+                  <React.Fragment key={student.id}>
+                    <TableRow className="group">
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="p-0 h-auto font-normal text-left flex items-center gap-2 w-full"
+                          onClick={() => toggleStudentExpanded(student.id)}
+                        >
+                          {expandedStudents[student.id] ? 
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" /> : 
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          }
+                          <div className="flex flex-col gap-0">
+                            <span className="font-medium">{student.username}</span>
+                            {student.studentId && <span className="text-xs text-muted-foreground">ID: {student.studentId}</span>}
+                          </div>
+                        </Button>
+                      </TableCell>
+                      
+                      {grades.map((grade, index) => (
+                        <TableCell key={index} className="text-center">
+                          {grade !== undefined ? (
+                            <Link to={`/submissions/${submissionIds[index]}`}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`rounded-full font-medium ${getGradeColorClass(grade)}`}
                               >
-                                {expandedStudents[student.id] ? (
-                                  <ChevronDown className="h-4 w-4 mr-1" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 mr-1" />
-                                )}
-                                <UserIcon className="h-4 w-4 mr-1" />
-                                {student.username}
+                                {grade !== null ? `${grade}%` : "—"}
                               </Button>
-                            </CollapsibleTrigger>
-                          </Collapsible>
+                            </Link>
+                          ) : (
+                            <Badge variant="outline" className="bg-gray-50 text-muted-foreground">
+                              Missing
+                            </Badge>
+                          )}
                         </TableCell>
-                        
-                        {/* Assignment Grades */}
-                        {grades.map((grade, index) => (
-                          <TableCell key={index} className="text-center">
-                            {grade !== undefined ? (
-                              submissionIds[index] ? (
-                                <Link to={`/submissions/${submissionIds[index]}`}>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className={`px-2 py-1 h-auto ${getGradeColorClass(grade)}`}
-                                  >
-                                    {grade !== null ? grade : "—"}
-                                  </Button>
-                                </Link>
-                              ) : (
-                                <span className={getGradeColorClass(grade)}>
-                                  {grade !== null ? grade : "—"}
-                                </span>
-                              )
-                            ) : (
-                              <Badge variant="outline" className="bg-gray-50 text-gray-500 text-xs">
-                                Missing
-                              </Badge>
-                            )}
-                          </TableCell>
-                        ))}
-                        
-                        {/* Average Grade */}
-                        <TableCell className="text-right">
-                          <div className={`font-medium ${getGradeColorClass(average)}`}>
-                            {average !== null 
-                              ? `${average.toFixed(1)}% (${getLetterGrade(average)})` 
-                              : "N/A"}
-                          </div>
-                          <div className="w-full mt-1 h-1 bg-gray-100 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full ${
-                                (average || 0) >= 90 ? 'bg-green-500' :
-                                (average || 0) >= 80 ? 'bg-green-400' :
-                                (average || 0) >= 70 ? 'bg-amber-400' :
-                                (average || 0) >= 60 ? 'bg-orange-400' :
-                                'bg-red-500'
-                              }`}
-                              style={{ width: `${Math.min(100, Math.max(0, completionPercentage))}%` }}
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-
-                      {/* Expanded Student Detail Row */}
-                      {expandedStudents[student.id] && (
-                        <TableRow className="bg-blue-50">
-                          <TableCell colSpan={assignments.length + 2} className="p-4">
-                            <div className="bg-white rounded-md shadow-sm p-4 border">
-                              <h4 className="font-medium mb-2 flex items-center gap-2">
-                                <UserIcon className="h-4 w-4" />
-                                {student.username}'s Assignment Details
-                              </h4>
-                              
-                              <div className="space-y-2 mt-4">
+                      ))}
+                      
+                      <TableCell className="text-right">
+                        <div className={`text-center font-medium ${getGradeColorClass(average)}`}>
+                          {average !== null 
+                            ? `${average.toFixed(1)}%` 
+                            : "—"
+                          }
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                          <div 
+                            className={`h-1.5 rounded-full ${
+                              (average || 0) >= 90 ? 'bg-green-600' :
+                              (average || 0) >= 80 ? 'bg-green-500' :
+                              (average || 0) >= 70 ? 'bg-amber-500' :
+                              (average || 0) >= 60 ? 'bg-orange-500' :
+                              'bg-red-500'
+                            }`}
+                            style={{ width: `${completionPercentage}%` }}
+                          ></div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    
+                    {/* Expanded view with student details */}
+                    {expandedStudents[student.id] && (
+                      <TableRow className="bg-muted/30">
+                        <TableCell colSpan={assignments.length + 2} className="p-0">
+                          <div className="p-4 space-y-4">
+                            <div className="text-sm">
+                              <h4 className="font-medium mb-2">Assignment Details for {student.username}</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 {assignments.map((assignment, index) => {
                                   const submissionId = submissionIds[index];
                                   const grade = grades[index];
-                                  const isCompleted = grade !== undefined;
-                                  
                                   return (
-                                    <div key={assignment.id} className="bg-gray-50 p-3 rounded-md">
-                                      <div className="flex justify-between items-start">
-                                        <div>
-                                          <div className="font-medium">{assignment.title}</div>
-                                          <div className="text-sm text-muted-foreground">
-                                            Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                                    <div key={assignment.id} className="border rounded-md p-3 bg-white">
+                                      <div className="text-sm font-medium">{assignment.title}</div>
+                                      <div className="text-xs text-muted-foreground mb-2">
+                                        Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                                      </div>
+                                      
+                                      <div className="flex justify-between items-center mt-2">
+                                        {grade !== undefined ? (
+                                          <div className={`text-sm font-medium ${getGradeColorClass(grade)}`}>
+                                            {grade !== null ? `${grade}% (${getLetterGrade(grade)})` : "Not Graded"}
                                           </div>
-                                          
-                                          {/* Status */}
-                                          <div className="flex items-center gap-1 mt-1">
-                                            {isCompleted ? (
-                                              <>
-                                                <CheckCircle2 className="h-3 w-3 text-green-500" />
-                                                <span className="text-sm text-green-600">Completed</span>
-                                                
-                                                {grade !== null && (
-                                                  <span className={`ml-2 text-sm ${getGradeColorClass(grade)}`}>
-                                                    Grade: {grade}/100 ({getLetterGrade(grade)})
-                                                  </span>
-                                                )}
-                                              </>
-                                            ) : (
-                                              <>
-                                                <AlertTriangle className="h-3 w-3 text-red-500" />
-                                                <span className="text-sm text-red-600">Missing</span>
-                                              </>
-                                            )}
-                                          </div>
-                                        </div>
+                                        ) : (
+                                          <div className="text-sm text-red-500 font-medium">Missing</div>
+                                        )}
                                         
-                                        {isCompleted && submissionId && (
-                                          <Button asChild variant="outline" size="sm">
-                                            <Link to={`/submissions/${submissionId}`}>
-                                              <FileText className="mr-1 h-4 w-4" />
-                                              View Submission
-                                            </Link>
+                                        {submissionId ? (
+                                          <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+                                            <Link to={`/submissions/${submissionId}`}>View</Link>
+                                          </Button>
+                                        ) : (
+                                          <Button disabled variant="outline" size="sm" className="h-7 text-xs">
+                                            No Submission
                                           </Button>
                                         )}
                                       </div>
@@ -488,33 +695,34 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
                                 })}
                               </div>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  ))}
-
-                  {/* Class Average Row */}
-                  <TableRow className="bg-muted font-medium">
-                    <TableCell>Class Average</TableCell>
-                    {gradeData.assignmentAverages.map((avg, index) => (
-                      <TableCell key={index} className="text-center">
-                        <span className={getGradeColorClass(avg)}>
-                          {avg !== null ? avg.toFixed(1) : "—"}
-                        </span>
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right">
-                      <span className={getGradeColorClass(gradeData.overallAverage)}>
-                        {gradeData.overallAverage !== null 
-                          ? `${gradeData.overallAverage.toFixed(1)}%` 
-                          : "N/A"}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                ))}
+                
+                {/* Class averages row */}
+                <TableRow className="bg-muted/30 font-medium">
+                  <TableCell>Class Average</TableCell>
+                  {gradeData.assignmentAverages.map((avg, index) => (
+                    <TableCell key={index} className="text-center">
+                      <span className={getGradeColorClass(avg)}>
+                        {avg !== null ? `${avg.toFixed(1)}%` : "—"}
                       </span>
                     </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
+                  ))}
+                  <TableCell className="text-center">
+                    <span className={getGradeColorClass(gradeData.overallAverage)}>
+                      {gradeData.overallAverage !== null 
+                        ? `${gradeData.overallAverage.toFixed(1)}%` 
+                        : "—"
+                      }
+                    </span>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </ScrollArea>
         </CardContent>
       </Card>
