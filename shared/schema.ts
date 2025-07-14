@@ -43,6 +43,76 @@ export const submissions = pgTable("submissions", {
   grade: integer("grade"),
   feedback: text("feedback"),
   is_draft: boolean("is_draft").notNull().default(true),
+  
+  // AI Analysis fields - Overall Scores
+  aiWritingQualityScore: integer("ai_writing_quality_score"), // Score * 100 (e.g., 4.1 -> 410)
+  aiWritingQualityConfidence: integer("ai_writing_quality_confidence"), // Confidence * 100 (e.g., 0.75 -> 75)
+  aiPlagiarismProbability: integer("ai_plagiarism_probability"), // Probability * 100 (e.g., 16.6 -> 1660)
+  aiPlagiarismConfidence: integer("ai_plagiarism_confidence"), // Confidence * 100 (e.g., 0.70 -> 70)
+  aiAnalysisDate: timestamp("ai_analysis_date"), // When analysis was performed
+  aiKeystrokeCount: integer("ai_keystroke_count"), // Number of keystrokes analyzed
+  
+  // Detailed Quality Score Components (all * 100 for precision)
+  aiQualityGrammarScore: integer("ai_quality_grammar_score"), // Grammar and syntax score * 100
+  aiQualityCoherenceScore: integer("ai_quality_coherence_score"), // Logical flow and coherence * 100
+  aiQualityVocabularyScore: integer("ai_quality_vocabulary_score"), // Vocabulary usage * 100
+  aiQualityStructureScore: integer("ai_quality_structure_score"), // Document structure * 100
+  aiQualityContentScore: integer("ai_quality_content_score"), // Content quality and relevance * 100
+  aiQualityOriginalityScore: integer("ai_quality_originality_score"), // Originality and creativity * 100
+  
+  // Detailed Plagiarism Analysis
+  aiPlagiarismSimilarityPercentage: integer("ai_plagiarism_similarity_percentage"), // Overall similarity * 100
+  aiPlagiarismSourceCount: integer("ai_plagiarism_source_count"), // Number of potential sources found
+  aiPlagiarismLongestMatch: integer("ai_plagiarism_longest_match"), // Longest matching sequence length
+  aiPlagiarismTotalMatches: integer("ai_plagiarism_total_matches"), // Total number of matches found
+  aiPlagiarismHighRiskSegments: integer("ai_plagiarism_high_risk_segments"), // Number of high-risk segments
+  aiPlagiarismMediumRiskSegments: integer("ai_plagiarism_medium_risk_segments"), // Number of medium-risk segments
+  
+  // Analysis Metadata
+  aiAnalysisModelVersion: text("ai_analysis_model_version"), // Version of the AI model used
+  aiAnalysisProcessingTime: integer("ai_analysis_processing_time"), // Processing time in milliseconds
+  aiAnalysisWordCount: integer("ai_analysis_word_count"), // Number of words analyzed
+  aiAnalysisCharacterCount: integer("ai_analysis_character_count"), // Number of characters analyzed
+  
+  // Detailed Analysis Results (JSON)
+  aiQualityAnalysisDetails: jsonb("ai_quality_analysis_details").$type<{
+    grammarIssues: Array<{ type: string; position: number; suggestion: string; severity: string }>;
+    coherenceIssues: Array<{ type: string; paragraph: number; description: string; severity: string }>;
+    vocabularyInsights: Array<{ type: string; word: string; suggestion: string; context: string }>;
+    structureAnalysis: { 
+      introduction: { score: number; feedback: string };
+      body: { score: number; feedback: string };
+      conclusion: { score: number; feedback: string };
+    };
+    strengths: string[];
+    improvements: string[];
+  }>(),
+  
+  aiPlagiarismAnalysisDetails: jsonb("ai_plagiarism_analysis_details").$type<{
+    matches: Array<{
+      sourceText: string;
+      submissionText: string;
+      similarityScore: number;
+      sourceType: string;
+      sourceUrl?: string;
+      startPosition: number;
+      endPosition: number;
+      riskLevel: 'high' | 'medium' | 'low';
+    }>;
+    sources: Array<{
+      name: string;
+      url?: string;
+      type: string;
+      overallSimilarity: number;
+      matchCount: number;
+    }>;
+    summary: {
+      totalWords: number;
+      flaggedWords: number;
+      flaggedPercentage: number;
+      recommendedAction: string;
+    };
+  }>(),
 });
 
 export const submissionVersions = pgTable("submission_versions", {

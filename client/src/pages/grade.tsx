@@ -59,25 +59,7 @@ export default function GradePage() {
     }
   });
 
-  // Function to generate a fake AI score between 0-100 based on student ID
-  // This creates a deterministic but seemingly random score
-  const generateAIScore = (studentId: number, submissionId: number): number => {
-    // Use a combination of student ID and submission ID to generate a consistent score
-    // This ensures the same student gets the same score for the same submission
-    const seed = (studentId * 13 + submissionId * 7) % 100;
-    
-    // Generate values mostly in the low range with occasional high values
-    if (seed % 17 === 0) return 75 + (seed % 25); // Occasional high values (75-99)
-    if (seed % 7 === 0) return 40 + (seed % 35);  // Some medium values (40-74)
-    return 5 + (seed % 35);  // Mostly low values (5-39)
-  };
-  
-  // Function to get AI risk level based on score
-  const getAIRiskLevel = (score: number): { color: string, label: string } => {
-    if (score >= 75) return { color: "text-red-500 border-red-200 bg-red-50", label: "High" };
-    if (score >= 40) return { color: "text-amber-500 border-amber-200 bg-amber-50", label: "Medium" };
-    return { color: "text-green-500 border-green-200 bg-green-50", label: "Low" };
-  };
+
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -94,9 +76,7 @@ export default function GradePage() {
                 const submission = submissionMap.get(student.id);
                 const hasSubmitted = !!submission;
                 
-                // Only generate AI score if there's a submission
-                const aiScore = hasSubmitted ? generateAIScore(student.id, submission.id) : 0;
-                const riskLevel = getAIRiskLevel(aiScore);
+
                 
                 return (
                   <Card key={student.id} className={hasSubmitted ? "" : "border-dashed border-muted"}>
@@ -116,23 +96,7 @@ export default function GradePage() {
                             </Badge>
                           )}
                           
-                          {/* AI Score Badge */}
-                          {hasSubmitted && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Badge variant="outline" className={`ml-2 ${riskLevel.color} cursor-help`}>
-                                    <AlertTriangle className="h-3 w-3 mr-1" />
-                                    AI: {aiScore}%
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p><strong>{riskLevel.label} risk of AI-generated content</strong></p>
-                                  <p className="text-xs mt-1">Based on keystroke pattern analysis</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
+
                         </CardTitle>
                       </div>
                     </CardHeader>
@@ -155,12 +119,11 @@ export default function GradePage() {
                               </p>
                             </div>
                             <div className="flex gap-2">
-                              {/* AI Analysis Button */}
-                              <Button asChild variant="outline" className={riskLevel.color.includes("red") ? "border-red-300 hover:bg-red-50" : ""}>
+                              {/* View Submission Button */}
+                              <Button asChild variant="outline">
                                 <Link to={`/submissions/${submission.id}`}>
-                                  {riskLevel.label === "High" 
-                                    ? <><AlertTriangle className="mr-1 h-4 w-4" /> AI Analysis</>
-                                    : "View Full Analysis"}
+                                  <FileText className="mr-1 h-4 w-4" />
+                                  View Submission
                                 </Link>
                               </Button>
                             </div>

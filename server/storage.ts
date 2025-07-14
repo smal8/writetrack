@@ -40,6 +40,40 @@ export interface IStorage {
   updateSubmission(id: number, content: string, keystrokes: unknown[], quotes?: unknown[]): Promise<Submission>;
   finalizeSubmission(id: number): Promise<Submission>;
   getDraftSubmission(assignmentId: number, studentId: number): Promise<Submission | undefined>;
+  updateSubmissionAnalysis(id: number, analysis: {
+    aiWritingQualityScore: number;
+    aiWritingQualityConfidence: number;
+    aiPlagiarismProbability: number;
+    aiPlagiarismConfidence: number;
+    aiAnalysisDate: Date;
+    aiKeystrokeCount: number;
+    
+    // Detailed Quality Score Components
+    aiQualityGrammarScore?: number;
+    aiQualityCoherenceScore?: number;
+    aiQualityVocabularyScore?: number;
+    aiQualityStructureScore?: number;
+    aiQualityContentScore?: number;
+    aiQualityOriginalityScore?: number;
+    
+    // Detailed Plagiarism Analysis
+    aiPlagiarismSimilarityPercentage?: number;
+    aiPlagiarismSourceCount?: number;
+    aiPlagiarismLongestMatch?: number;
+    aiPlagiarismTotalMatches?: number;
+    aiPlagiarismHighRiskSegments?: number;
+    aiPlagiarismMediumRiskSegments?: number;
+    
+    // Analysis Metadata
+    aiAnalysisModelVersion?: string;
+    aiAnalysisProcessingTime?: number;
+    aiAnalysisWordCount?: number;
+    aiAnalysisCharacterCount?: number;
+    
+    // Detailed Analysis Results
+    aiQualityAnalysisDetails?: any;
+    aiPlagiarismAnalysisDetails?: any;
+  }): Promise<Submission>;
 
   // Submission version management
   createSubmissionVersion(version: InsertVersion): Promise<SubmissionVersion>;
@@ -316,11 +350,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDraftSubmission(assignmentId: number, studentId: number): Promise<Submission | undefined> {
-    const [submission] = await db
-      .select({
-        submission: submissions,
-        assignment: assignments
-      })
+    const result = await db.select()
       .from(submissions)
       .where(
         and(
@@ -329,14 +359,89 @@ export class DatabaseStorage implements IStorage {
           eq(submissions.is_draft, true)
         )
       )
-      .innerJoin(assignments, eq(assignments.id, submissions.assignmentId));
+      .limit(1);
 
-    if (!submission) return undefined;
+    return result[0];
+  }
 
-    return {
-      ...submission.submission,
-      assignment: submission.assignment
-    };
+  async updateSubmissionAnalysis(id: number, analysis: {
+    aiWritingQualityScore: number;
+    aiWritingQualityConfidence: number;
+    aiPlagiarismProbability: number;
+    aiPlagiarismConfidence: number;
+    aiAnalysisDate: Date;
+    aiKeystrokeCount: number;
+    
+    // Detailed Quality Score Components
+    aiQualityGrammarScore?: number;
+    aiQualityCoherenceScore?: number;
+    aiQualityVocabularyScore?: number;
+    aiQualityStructureScore?: number;
+    aiQualityContentScore?: number;
+    aiQualityOriginalityScore?: number;
+    
+    // Detailed Plagiarism Analysis
+    aiPlagiarismSimilarityPercentage?: number;
+    aiPlagiarismSourceCount?: number;
+    aiPlagiarismLongestMatch?: number;
+    aiPlagiarismTotalMatches?: number;
+    aiPlagiarismHighRiskSegments?: number;
+    aiPlagiarismMediumRiskSegments?: number;
+    
+    // Analysis Metadata
+    aiAnalysisModelVersion?: string;
+    aiAnalysisProcessingTime?: number;
+    aiAnalysisWordCount?: number;
+    aiAnalysisCharacterCount?: number;
+    
+    // Detailed Analysis Results
+    aiQualityAnalysisDetails?: any;
+    aiPlagiarismAnalysisDetails?: any;
+  }): Promise<Submission> {
+    const result = await db
+      .update(submissions)
+      .set({
+        aiWritingQualityScore: analysis.aiWritingQualityScore,
+        aiWritingQualityConfidence: analysis.aiWritingQualityConfidence,
+        aiPlagiarismProbability: analysis.aiPlagiarismProbability,
+        aiPlagiarismConfidence: analysis.aiPlagiarismConfidence,
+        aiAnalysisDate: analysis.aiAnalysisDate,
+        aiKeystrokeCount: analysis.aiKeystrokeCount,
+        
+        // Detailed Quality Score Components
+        aiQualityGrammarScore: analysis.aiQualityGrammarScore,
+        aiQualityCoherenceScore: analysis.aiQualityCoherenceScore,
+        aiQualityVocabularyScore: analysis.aiQualityVocabularyScore,
+        aiQualityStructureScore: analysis.aiQualityStructureScore,
+        aiQualityContentScore: analysis.aiQualityContentScore,
+        aiQualityOriginalityScore: analysis.aiQualityOriginalityScore,
+        
+        // Detailed Plagiarism Analysis
+        aiPlagiarismSimilarityPercentage: analysis.aiPlagiarismSimilarityPercentage,
+        aiPlagiarismSourceCount: analysis.aiPlagiarismSourceCount,
+        aiPlagiarismLongestMatch: analysis.aiPlagiarismLongestMatch,
+        aiPlagiarismTotalMatches: analysis.aiPlagiarismTotalMatches,
+        aiPlagiarismHighRiskSegments: analysis.aiPlagiarismHighRiskSegments,
+        aiPlagiarismMediumRiskSegments: analysis.aiPlagiarismMediumRiskSegments,
+        
+        // Analysis Metadata
+        aiAnalysisModelVersion: analysis.aiAnalysisModelVersion,
+        aiAnalysisProcessingTime: analysis.aiAnalysisProcessingTime,
+        aiAnalysisWordCount: analysis.aiAnalysisWordCount,
+        aiAnalysisCharacterCount: analysis.aiAnalysisCharacterCount,
+        
+        // Detailed Analysis Results
+        aiQualityAnalysisDetails: analysis.aiQualityAnalysisDetails,
+        aiPlagiarismAnalysisDetails: analysis.aiPlagiarismAnalysisDetails,
+      })
+      .where(eq(submissions.id, id))
+      .returning();
+
+    if (result.length === 0) {
+      throw new Error("Submission not found");
+    }
+
+    return result[0];
   }
 
   async createSubmissionVersion(version: InsertVersion): Promise<SubmissionVersion> {

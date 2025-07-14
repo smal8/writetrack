@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import type { Assignment, Class, Submission, User } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,9 @@ import {
   ArrowUpDown,
   Download,
   Table2,
-  FileCheck
+  FileCheck,
+  Brain,
+  Shield
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "./ui/button";
@@ -60,10 +62,153 @@ interface GradeDataType {
   completionRate: number;
 }
 
+// Add AI Analysis interface
+interface AIAnalysis {
+  writingQuality: {
+    qualityScore: number;
+    confidence: number;
+    details: string;
+  };
+  plagiarism: {
+    plagiarismProbability: number;
+    confidence: number;
+    details: string;
+  };
+  metadata: {
+    keystrokeCount: number;
+    analyzedAt: string;
+  };
+}
+
+// Add AI Analysis component
+function AIScoreIndicator({ submission }: { submission: Submission }) {
+  const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Check if analysis already exists in the database
+  const hasExistingAnalysis = submission.aiAnalysisDate && 
+    submission.aiWritingQualityScore !== null && 
+    submission.aiPlagiarismProbability !== null;
+
+  // Initialize analysis state from existing data if available
+  useEffect(() => {
+    if (hasExistingAnalysis && !analysis) {
+      setAnalysis({
+        writingQuality: {
+          qualityScore: (submission.aiWritingQualityScore || 0) / 100, // Convert back from stored format
+          confidence: (submission.aiWritingQualityConfidence || 75) / 100,
+          details: 'Cached analysis result'
+        },
+        plagiarism: {
+          plagiarismProbability: (submission.aiPlagiarismProbability || 0) / 100, // Convert back from stored format
+          confidence: (submission.aiPlagiarismConfidence || 70) / 100,
+          details: 'Cached analysis result'
+        },
+        metadata: {
+          keystrokeCount: submission.aiKeystrokeCount || 0,
+          analyzedAt: submission.aiAnalysisDate ? 
+            (typeof submission.aiAnalysisDate === 'string' ? submission.aiAnalysisDate : submission.aiAnalysisDate.toISOString()) 
+            : new Date().toISOString()
+        }
+      });
+    }
+  }, [hasExistingAnalysis, submission, analysis]);
+
+  const analyzeSubmission = async () => {
+    if (loading) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/submissions/${submission.id}/analysis`);
+      if (!response.ok) {
+        throw new Error('Failed to analyze submission');
+      }
+      
+      const data = await response.json();
+      setAnalysis(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Analysis failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getQualityColor = (score: number) => {
+    if (score >= 4.5) return 'text-green-600';
+    if (score >= 3.5) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getPlagiarismColor = (probability: number) => {
+    if (probability < 20) return 'text-green-600';
+    if (probability < 50) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* Only show Analyze button if no existing analysis and not currently loading */}
+      {!hasExistingAnalysis && !analysis && !loading && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={analyzeSubmission}
+          className="h-7 text-xs"
+        >
+          <Brain className="h-3 w-3 mr-1" />
+          Analyze
+        </Button>
+      )}
+      
+      {loading && (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+          Analyzing...
+        </div>
+      )}
+      
+      {error && (
+        <div className="text-xs text-red-600">
+          Error: {error}
+        </div>
+      )}
+      
+      {analysis && (
+        <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-1">
+            <Brain className="h-3 w-3" />
+            <span className={getQualityColor(analysis.writingQuality.qualityScore)}>
+              {analysis.writingQuality.qualityScore.toFixed(1)}/6.0
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Shield className="h-3 w-3" />
+            <span className={getPlagiarismColor(analysis.plagiarism.plagiarismProbability)}>
+              {analysis.plagiarism.plagiarismProbability.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TeacherGradeBook({ classData, assignments, submissions, students }: TeacherGradeBookProps) {
   const [sortField, setSortField] = useState<'name' | 'average'>('average');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [expandedStudents, setExpandedStudents] = useState<Record<number, boolean>>({});
+
+  // Create a map for easy submission lookup
+  const submissionMap = useMemo(() => {
+    const map = new Map<number, Submission>();
+    submissions.forEach(submission => {
+      map.set(submission.id, submission);
+    });
+    return map;
+  }, [submissions]);
 
   // Toggle student expanded state
   const toggleStudentExpanded = (studentId: number) => {
@@ -614,15 +759,20 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
                       {grades.map((grade, index) => (
                         <TableCell key={index} className="text-center">
                           {grade !== undefined ? (
-                            <Link to={`/submissions/${submissionIds[index]}`}>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`rounded-full font-medium ${getGradeColorClass(grade)}`}
-                              >
-                                {grade !== null ? `${grade}%` : "—"}
-                              </Button>
-                            </Link>
+                            <div className="flex flex-col items-center gap-1">
+                              <Link to={`/submissions/${submissionIds[index]}`}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={`rounded-full font-medium ${getGradeColorClass(grade)}`}
+                                >
+                                  {grade !== null ? `${grade}%` : "—"}
+                                </Button>
+                              </Link>
+                              {submissionIds[index] && submissionMap.get(submissionIds[index]) && (
+                                <AIScoreIndicator submission={submissionMap.get(submissionIds[index])!} />
+                              )}
+                            </div>
                           ) : (
                             <Badge variant="outline" className="bg-gray-50 text-muted-foreground">
                               Missing
@@ -681,9 +831,14 @@ export function TeacherGradeBook({ classData, assignments, submissions, students
                                         )}
                                         
                                         {submissionId ? (
-                                          <Button asChild variant="outline" size="sm" className="h-7 text-xs">
-                                            <Link to={`/submissions/${submissionId}`}>View</Link>
-                                          </Button>
+                                          <div className="flex flex-col gap-2">
+                                            <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+                                              <Link to={`/submissions/${submissionId}`}>View</Link>
+                                            </Button>
+                                            {submissionMap.get(submissionId) && (
+                                              <AIScoreIndicator submission={submissionMap.get(submissionId)!} />
+                                            )}
+                                          </div>
                                         ) : (
                                           <Button disabled variant="outline" size="sm" className="h-7 text-xs">
                                             No Submission

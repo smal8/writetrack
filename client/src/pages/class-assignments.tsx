@@ -72,29 +72,54 @@ export default function ClassAssignmentsPage() {
   const getOpenAssignments = () => {
     if (!assignmentsQuery.data || !submissionsQuery.data || !user) return [];
 
-    const submittedAssignmentIds = new Set(
-      submissionsQuery.data
-        .filter(s => s.studentId === user.id && !s.is_draft)
-        .map(s => s.assignmentId)
-    );
+    const now = new Date();
+    
+    if (user.isTeacher) {
+      // For teachers, show assignments that are still accepting submissions (not past due)
+      return assignmentsQuery.data.filter(assignment => {
+        const isPastDue = new Date(assignment.dueDate) < now;
+        return !isPastDue;
+      });
+    } else {
+      // For students, show assignments that are not submitted and not past due
+      const submittedAssignmentIds = new Set(
+        submissionsQuery.data
+          .filter(s => s.studentId === user.id && !s.is_draft)
+          .map(s => s.assignmentId)
+      );
 
-    return assignmentsQuery.data.filter(assignment => 
-      !submittedAssignmentIds.has(assignment.id)
-    );
+      return assignmentsQuery.data.filter(assignment => {
+        const isSubmitted = submittedAssignmentIds.has(assignment.id);
+        const isPastDue = new Date(assignment.dueDate) < now;
+        
+        // Show assignment if it's not submitted AND not past due
+        return !isSubmitted && !isPastDue;
+      });
+    }
   };
 
   const getCompletedAssignments = () => {
     if (!assignmentsQuery.data || !submissionsQuery.data || !user) return [];
 
-    const submittedAssignmentIds = new Set(
-      submissionsQuery.data
-        .filter(s => s.studentId === user.id && !s.is_draft)
-        .map(s => s.assignmentId)
-    );
+    if (user.isTeacher) {
+      // For teachers, show assignments that are past due (no longer accepting submissions)
+      const now = new Date();
+      return assignmentsQuery.data.filter(assignment => {
+        const isPastDue = new Date(assignment.dueDate) < now;
+        return isPastDue;
+      });
+    } else {
+      // For students, show assignments that have been submitted
+      const submittedAssignmentIds = new Set(
+        submissionsQuery.data
+          .filter(s => s.studentId === user.id && !s.is_draft)
+          .map(s => s.assignmentId)
+      );
 
-    return assignmentsQuery.data.filter(assignment => 
-      submittedAssignmentIds.has(assignment.id)
-    );
+      return assignmentsQuery.data.filter(assignment => 
+        submittedAssignmentIds.has(assignment.id)
+      );
+    }
   };
 
   const openAssignments = getOpenAssignments();
@@ -129,8 +154,12 @@ export default function ClassAssignmentsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="open">Open Assignments</TabsTrigger>
-          <TabsTrigger value="submitted">Completed Assignments</TabsTrigger>
+          <TabsTrigger value="open">
+            {user?.isTeacher ? 'Open Assignments' : 'Open Assignments'}
+          </TabsTrigger>
+          <TabsTrigger value="submitted">
+            {user?.isTeacher ? 'Closed Assignments' : 'Completed Assignments'}
+          </TabsTrigger>
           {/* Show gradebook tab for both teachers and students */}
           <TabsTrigger value="gradebook">Grade Book</TabsTrigger>
         </TabsList>
@@ -138,7 +167,15 @@ export default function ClassAssignmentsPage() {
         <TabsContent value="open">
           <Card>
             <CardHeader>
-              <CardTitle>Open Assignments</CardTitle>
+              <CardTitle>
+                {user?.isTeacher ? 'Open Assignments' : 'Open Assignments'}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {user?.isTeacher 
+                  ? 'Assignments that are still accepting submissions (not past due)'
+                  : 'Assignments you can still submit (not past due and not yet submitted)'
+                }
+              </p>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -162,7 +199,10 @@ export default function ClassAssignmentsPage() {
                 ))}
                 {openAssignments.length === 0 && (
                   <p className="text-center text-muted-foreground">
-                    No open assignments available.
+                    {user?.isTeacher 
+                      ? 'No open assignments available.'
+                      : 'No open assignments available.'
+                    }
                   </p>
                 )}
               </div>
@@ -173,7 +213,15 @@ export default function ClassAssignmentsPage() {
         <TabsContent value="submitted">
           <Card>
             <CardHeader>
-              <CardTitle>Completed Assignments</CardTitle>
+              <CardTitle>
+                {user?.isTeacher ? 'Closed Assignments' : 'Completed Assignments'}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {user?.isTeacher 
+                  ? 'Assignments that are past due and no longer accepting submissions'
+                  : 'Assignments you have already submitted'
+                }
+              </p>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -188,23 +236,35 @@ export default function ClassAssignmentsPage() {
                         <div>
                           <h3 className="font-semibold">{assignment.title}</h3>
                           <p className="text-sm text-muted-foreground">
-                            Completed: {submission && new Date(submission.submittedAt).toLocaleDateString()}
+                            {user?.isTeacher 
+                              ? `Due: ${new Date(assignment.dueDate).toLocaleDateString()}`
+                              : `Completed: ${submission && new Date(submission.submittedAt).toLocaleDateString()}`
+                            }
                           </p>
-                          {submission && submission.grade !== null && (
+                          {!user?.isTeacher && submission && submission.grade !== null && (
                             <p className="mt-2 font-medium">
                               Grade: {submission.grade}/100
                             </p>
                           )}
-                          {submission && submission.feedback && (
+                          {!user?.isTeacher && submission && submission.feedback && (
                             <p className="mt-2 text-sm text-muted-foreground">
                               Feedback: {submission.feedback}
                             </p>
                           )}
+                          {user?.isTeacher && (
+                            <p className="mt-2">{assignment.description}</p>
+                          )}
                         </div>
-                        {submission && (
-                          <Button asChild variant="outline">
-                            <Link to={`/submissions/${submission.id}`}>View Submission</Link>
+                        {user?.isTeacher ? (
+                          <Button asChild>
+                            <Link to={`/assignments/${assignment.id}/grade`}>View Submissions</Link>
                           </Button>
+                        ) : (
+                          submission && (
+                            <Button asChild variant="outline">
+                              <Link to={`/submissions/${submission.id}`}>View Submission</Link>
+                            </Button>
+                          )
                         )}
                       </div>
                     </div>
@@ -212,7 +272,10 @@ export default function ClassAssignmentsPage() {
                 })}
                 {completedAssignments.length === 0 && (
                   <p className="text-center text-muted-foreground">
-                    No completed assignments yet.
+                    {user?.isTeacher 
+                      ? 'No closed assignments yet.'
+                      : 'No completed assignments yet.'
+                    }
                   </p>
                 )}
               </div>

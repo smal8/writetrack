@@ -3,7 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GradingForm } from "@/components/grading-form";
 import { KeystrokeGraph } from "@/components/keystroke-graph";
-import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Loader2, AlertTriangle, ArrowLeft, Brain, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { Submission, Assignment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -53,40 +53,7 @@ function renderTeacherContent(submission: Submission & { assignment: Assignment 
   return enhancedContent;
 }
 
-// Function to generate a fake AI score between 0-100 based on student ID
-// This creates a deterministic but seemingly random score
-const generateAIScore = (studentId: number, submissionId: number): number => {
-  // Use a combination of student ID and submission ID to generate a consistent score
-  // This ensures the same student gets the same score for the same submission
-  const seed = (studentId * 13 + submissionId * 7) % 100;
-  
-  // Generate values mostly in the low range with occasional high values
-  if (seed % 17 === 0) return 75 + (seed % 25); // Occasional high values (75-99)
-  if (seed % 7 === 0) return 40 + (seed % 35);  // Some medium values (40-74)
-  return 5 + (seed % 35);  // Mostly low values (5-39)
-};
 
-// Function to get AI risk level based on score
-const getAIRiskLevel = (score: number): { color: string, label: string, bgColor: string, progressColor: string } => {
-  if (score >= 75) return { 
-    color: "text-red-500", 
-    label: "High", 
-    bgColor: "bg-red-50",
-    progressColor: "bg-red-500"
-  };
-  if (score >= 40) return { 
-    color: "text-amber-500", 
-    label: "Medium", 
-    bgColor: "bg-amber-50",
-    progressColor: "bg-amber-500"
-  };
-  return { 
-    color: "text-green-500", 
-    label: "Low", 
-    bgColor: "bg-green-50",
-    progressColor: "bg-green-500"
-  };
-};
 
 // Interface for change fragments that track text changes
 interface TextChange {
@@ -95,6 +62,82 @@ interface TextChange {
   text: string;
   isDelete: boolean;
   length: number;
+}
+
+// Add AI Analysis interface
+interface AIAnalysis {
+  writingQuality: {
+    qualityScore: number;
+    confidence: number;
+    details: string;
+  };
+  plagiarism: {
+    plagiarismProbability: number;
+    confidence: number;
+    details: string;
+  };
+  metadata: {
+    keystrokeCount: number;
+    analyzedAt: string;
+    cached: boolean;
+  };
+}
+
+// Add AI Analysis Hook
+function useAIAnalysis(submissionId: string) {
+  const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Auto-load existing analysis when component mounts or submissionId changes
+  useEffect(() => {
+    if (submissionId && isInitialLoad) {
+      loadExistingAnalysis();
+    }
+  }, [submissionId, isInitialLoad]);
+
+  const loadExistingAnalysis = async () => {
+    if (!submissionId) return;
+    
+    try {
+      const response = await fetch(`/api/submissions/${submissionId}/analysis`);
+      if (response.ok) {
+        const data = await response.json();
+        setAnalysis(data);
+      }
+      // If no existing analysis, that's fine - just don't set analysis
+    } catch (err) {
+      // If loading existing analysis fails, that's fine - user can still analyze
+      console.log('No existing analysis found or failed to load');
+    } finally {
+      setIsInitialLoad(false);
+    }
+  };
+
+  const analyzeSubmission = async (forceRefresh = false) => {
+    if (loading) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const url = `/api/submissions/${submissionId}/analysis${forceRefresh ? '?refresh=true' : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to analyze submission');
+      }
+      
+      const data = await response.json();
+      setAnalysis(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Analysis failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { analysis, setAnalysis, loading, error, analyzeSubmission };
 }
 
 export default function SubmissionPage() {
@@ -282,6 +325,9 @@ export default function SubmissionPage() {
     }
   }, [selectedKeystrokeRange, submissionQuery.data, reconstructEssayAtTimePoints]);
 
+  // Add AI analysis hook
+  const { analysis, setAnalysis, loading: aiLoading, error: aiError, analyzeSubmission } = useAIAnalysis(submissionId || "");
+
   if (submissionQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -318,9 +364,7 @@ export default function SubmissionPage() {
     return acc;
   }, { characters: 0, deletions: 0 });
 
-  // Generate AI score for teacher view
-  const aiScore = user?.isTeacher ? generateAIScore(submission.studentId, parseInt(submissionId || "0")) : 0;
-  const riskLevel = getAIRiskLevel(aiScore);
+
   
   // Function to render changes with highlighting
   const renderEssayWithHighlights = () => {
@@ -442,6 +486,134 @@ export default function SubmissionPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* AI Analysis Card - Only for Teachers */}
+      {user?.isTeacher && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5" />
+              AI Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!analysis && !aiLoading && (
+              <div className="flex items-center gap-4">
+                <Button onClick={() => analyzeSubmission()} className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  Analyze Writing Quality & Plagiarism
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  Click to analyze keystroke patterns for writing quality and plagiarism detection
+                </p>
+              </div>
+            )}
+            
+            {aiLoading && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                Analyzing submission... This may take a few moments.
+              </div>
+            )}
+            
+            {aiError && (
+              <div className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-4 w-4" />
+                Error: {aiError}
+              </div>
+            )}
+            
+            {analysis && (
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-5 w-5 text-blue-600" />
+                    <h3 className="font-semibold">Writing Quality</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Score:</span>
+                      <span className={`text-lg font-bold ${
+                        analysis.writingQuality.qualityScore >= 4.5 ? 'text-green-600' :
+                        analysis.writingQuality.qualityScore >= 3.5 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {analysis.writingQuality.qualityScore.toFixed(1)}/6.0
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Confidence:</span>
+                      <span className="text-sm">{(analysis.writingQuality.confidence * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-orange-600" />
+                    <h3 className="font-semibold">Plagiarism Risk</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Risk Level:</span>
+                      <span className={`text-lg font-bold ${
+                        analysis.plagiarism.plagiarismProbability < 20 ? 'text-green-600' :
+                        analysis.plagiarism.plagiarismProbability < 50 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {analysis.plagiarism.plagiarismProbability.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Confidence:</span>
+                      <span className="text-sm">{(analysis.plagiarism.confidence * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {analysis && (
+              <div className="mt-6 pt-4 border-t">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>Analyzed {analysis.metadata.keystrokeCount} keystrokes</span>
+                    <span>•</span>
+                    <span>Analyzed at {new Date(analysis.metadata.analyzedAt).toLocaleString()}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      {analysis.metadata.cached ? (
+                        <>
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          Cached result
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          Fresh analysis
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  {analysis.metadata.cached && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Force fresh analysis by clearing cache and re-analyzing
+                        setAnalysis(null);
+                        analyzeSubmission(true);
+                      }}
+                      className="text-xs"
+                    >
+                      Re-analyze
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Existing submission content */}
       <Card>
         <CardHeader>
           <CardTitle>Submission Details</CardTitle>
@@ -488,57 +660,7 @@ export default function SubmissionPage() {
               <>
                 {viewMode === 'full' && (
                   <>
-                    {/* AI Analysis Card */}
-                    <Card className={`mt-8 border-2 ${riskLevel.color} ${riskLevel.bgColor}`}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2">
-                          <AlertTriangle className={`h-5 w-5 ${riskLevel.color}`} />
-                          AI Content Analysis
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className={`text-3xl font-bold ${riskLevel.color}`}>{aiScore}%</p>
-                              <p className="text-sm font-medium">
-                                {riskLevel.label} probability of AI-generated content
-                              </p>
-                            </div>
-                            <div className={`px-4 py-2 rounded-full font-semibold ${riskLevel.bgColor} ${riskLevel.color}`}>
-                              {riskLevel.label} Risk
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>AI Content Probability</span>
-                              <span className="font-medium">{aiScore}%</span>
-                            </div>
-                            <Progress value={aiScore} className="h-2" indicatorClassName={riskLevel.progressColor} />
-                          </div>
-                          
-                          <div className="text-sm space-y-2">
-                            <p className="font-semibold">Key Detection Factors:</p>
-                            <ul className="list-disc pl-5 space-y-1">
-                              <li>Keystroke rhythm analysis</li>
-                              <li>Pause pattern detection</li>
-                              <li>Edit behavior fingerprinting</li>
-                              <li>Citation integration patterns</li>
-                            </ul>
-                          </div>
-                          
-                          {riskLevel.label === "High" && (
-                            <div className="p-3 bg-red-100 border border-red-200 rounded-md mt-2">
-                              <p className="text-red-800 text-sm font-medium">
-                                This submission shows strong indicators of AI-generated content. 
-                                Review carefully before grading.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+
                   </>
                 )}
 
