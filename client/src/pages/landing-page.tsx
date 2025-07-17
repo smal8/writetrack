@@ -24,8 +24,8 @@ export default function LandingPage() {
       }`}>
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="WriteTrack Logo" className="h-10 w-10" />
-            <span className="text-xl font-bold">WriteTrack</span>
+            <img src="/logo.svg" alt="Rawk Logo" className="h-10 w-10" />
+            <span className="text-xl font-bold">Rawk</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm font-medium hover:text-primary">Features</a>
@@ -51,15 +51,15 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-                Keystroke Analysis for AI Content Detection
+                Ensuring Real Learning in the Age of AI
               </h1>
               <p className="text-lg text-muted-foreground mb-8">
-                WriteTrack uses advanced analysis of keystroke patterns to detect AI-generated content in essays, with plans to expand into code and mathematical equations—providing educators with powerful tools to ensure academic integrity.
+                Rawk helps teachers verify that students are genuinely learning and helps students ensure they're truly understanding—not just copying. Transform AI interactions into meaningful learning experiences that benefit everyone.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button asChild size="lg">
                   <Link href="/auth?tab=register">
-                    Get Started <ArrowRight className="ml-2 h-4 w-4" />
+                    Verify Learning <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
@@ -70,7 +70,7 @@ export default function LandingPage() {
             <div className="flex justify-center">
               <img 
                 src="/editor-preview.png" 
-                alt="WriteTrack Editor" 
+                alt="Rawk Editor" 
                 className="rounded-lg shadow-xl max-w-full h-auto"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -86,9 +86,9 @@ export default function LandingPage() {
       <section id="features" className="bg-gray-50 py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Key Features</h2>
+            <h2 className="text-3xl font-bold mb-4">Learning Verification Features</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              WriteTrack offers sophisticated keystroke analysis across multiple content creation environments
+              Rawk provides tools for both educators and students to ensure genuine learning is happening, not just assignment completion
             </p>
           </div>
           
@@ -98,9 +98,9 @@ export default function LandingPage() {
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
                 <Edit3 className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Multi-Domain Editors</h3>
+              <h3 className="text-xl font-semibold mb-2">Smart Learning Environments</h3>
               <p className="text-muted-foreground">
-                Specialized editors for essays, code, and mathematical equations, each with domain-specific features.
+                Specialized writing environments that help students learn deeply while giving teachers insights into the genuine learning process.
               </p>
             </div>
             
@@ -109,9 +109,9 @@ export default function LandingPage() {
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
                 <PieChart className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Advanced AI Detection</h3>
+              <h3 className="text-xl font-semibold mb-2">Learning Process Analytics</h3>
               <p className="text-muted-foreground">
-                Sophisticated analysis of typing patterns, pauses, edits, and revisions to identify AI-generated content.
+                Intelligent analysis that shows teachers how students are learning and helps students understand their own learning patterns.
               </p>
             </div>
             
@@ -120,9 +120,9 @@ export default function LandingPage() {
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
                 <Shield className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Citation & Source Controls</h3>
+              <h3 className="text-xl font-semibold mb-2">AI Learning Integration</h3>
               <p className="text-muted-foreground">
-                Advanced copy-paste tracking and citation management across different domains for academic integrity.
+                Turn AI tool usage into verifiable learning experiences, ensuring students understand what they're using and why.
               </p>
             </div>
             
@@ -131,9 +131,9 @@ export default function LandingPage() {
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
                 <User className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Simple Authentication</h3>
+              <h3 className="text-xl font-semibold mb-2">Mutual Learning Insights</h3>
               <p className="text-muted-foreground">
-                Easy access for students with streamlined authentication, while educators enjoy secure institutional login.
+                Students get self-awareness of their learning process while teachers gain visibility into genuine student understanding.
               </p>
             </div>
             
@@ -142,9 +142,9 @@ export default function LandingPage() {
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
                 <Lightbulb className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Pattern Analysis</h3>
+              <h3 className="text-xl font-semibold mb-2">Guided Learning Questions</h3>
               <p className="text-muted-foreground">
-                Machine learning algorithms that learn and adapt to individual typing patterns for higher accuracy.
+                Interactive prompts that help students reflect on their understanding while providing teachers evidence of thinking processes.
               </p>
             </div>
             
@@ -153,9 +153,9 @@ export default function LandingPage() {
               <div className="bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full mb-4">
                 <FileCode className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Comprehensive Dashboard</h3>
+              <h3 className="text-xl font-semibold mb-2">Learning Evidence Dashboard</h3>
               <p className="text-muted-foreground">
-                Detailed analytics on student work across different domains with visual indicators of potential AI usage.
+                Clear documentation of the learning journey that students can review and teachers can use to assess genuine understanding.
               </p>
             </div>
           </div>
@@ -166,9 +166,9 @@ export default function LandingPage() {
       <section id="applications" className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Applications</h2>
+            <h2 className="text-3xl font-bold mb-4">Learning Environments</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              WriteTrack adapts to different educational contexts with specialized environments — with more to come
+              Rawk adapts to different learning contexts with specialized environments that enhance understanding — with more to come
             </p>
           </div>
           
@@ -203,7 +203,7 @@ export default function LandingPage() {
             
             {/* Code Editor */}
             <div className="bg-white p-6 rounded-lg shadow-sm border relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-40 bg-blue-500 text-white text-center py-1 rotate-45 translate-y-3 translate-x-8 text-xs font-semibold shadow-md">
+              <div className="absolute top-0 right-0 w-40 bg-blue-500 text-white text-center py-2 rotate-45 translate-y-4 translate-x-10 text-xs font-semibold shadow-md flex items-center justify-center">
                 Coming Soon
               </div>
               <div className="bg-purple-100 text-purple-700 w-12 h-12 flex items-center justify-center rounded-full mb-4">
@@ -231,7 +231,7 @@ export default function LandingPage() {
             
             {/* LaTeX Editor */}
             <div className="bg-white p-6 rounded-lg shadow-sm border relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-40 bg-blue-500 text-white text-center py-1 rotate-45 translate-y-3 translate-x-8 text-xs font-semibold shadow-md">
+              <div className="absolute top-0 right-0 w-40 bg-blue-500 text-white text-center py-2 rotate-45 translate-y-4 translate-x-10 text-xs font-semibold shadow-md flex items-center justify-center">
                 Coming Soon
               </div>
               <div className="bg-green-100 text-green-700 w-12 h-12 flex items-center justify-center rounded-full mb-4">
@@ -260,7 +260,7 @@ export default function LandingPage() {
           
           <div className="mt-12 text-center">
             <p className="text-muted-foreground">
-              Our roadmap includes expanding WriteTrack's capabilities to cover more educational contexts. 
+              Our roadmap includes expanding Rawk's capabilities to cover more educational contexts. 
               <br />Want to be notified when new editors are released? <a href="/auth?tab=register" className="text-primary hover:underline">Sign up for updates</a>.
             </p>
           </div>
@@ -274,28 +274,28 @@ export default function LandingPage() {
             <div>
               <h2 className="text-3xl font-bold mb-6">For Educators</h2>
               <p className="text-lg mb-6">
-                WriteTrack provides educators with powerful tools to detect AI-generated content in essays now, with code and mathematical content support coming soon—helping maintain academic integrity in the age of generative AI.
+                Rawk helps you see beyond assignment completion to verify that genuine learning is happening. Get insights into student thinking processes and identify when AI tools are being used as learning aids versus shortcuts.
               </p>
               <ul className="space-y-4">
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Comprehensive dashboard with detailed keystroke analytics</span>
+                  <span>Verify authentic student understanding through writing process analysis</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Essay content analysis with AI detection capabilities</span>
+                  <span>See evidence of student thinking patterns and learning development</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Visual timeline of student work with anomaly highlighting</span>
+                  <span>Identify when students are learning from AI versus copying from it</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Configurable detection sensitivity for different assignments</span>
+                  <span>Review student reflection questions to assess genuine comprehension</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Integrated grading and feedback tools</span>
+                  <span>Support students who need help transforming AI use into real learning</span>
                 </li>
               </ul>
             </div>
@@ -332,28 +332,28 @@ export default function LandingPage() {
             <div className="order-1 md:order-2">
               <h2 className="text-3xl font-bold mb-6">For Students</h2>
               <p className="text-lg mb-6">
-                Students benefit from our essay writing environment today, with specialized tools for different subjects coming soon to help them demonstrate their authentic work and understanding.
+                Rawk helps you ensure you're truly learning and understanding, not just completing assignments. Verify your own comprehension and turn AI interactions into genuine learning experiences that build real knowledge.
               </p>
               <ul className="space-y-4">
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Distraction-free essay writing environment</span>
+                  <span>Verify your own understanding through guided reflection questions</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Proper citation and reference management tools</span>
+                  <span>Transform AI assistance into genuine learning rather than passive copying</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Intuitive interface with focused writing features</span>
+                  <span>Get insights into your learning process and identify areas for improvement</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Calendar system for tracking assignments across all courses</span>
+                  <span>Build confidence by demonstrating authentic understanding to teachers</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Simple login and seamless submission process</span>
+                  <span>Develop better learning habits that will serve you beyond any single assignment</span>
                 </li>
               </ul>
             </div>
@@ -364,16 +364,16 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="py-20 bg-primary text-white">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-6">Ready to Ensure Academic Integrity?</h2>
+          <h2 className="text-3xl font-bold mb-6">Ready to Verify Real Learning?</h2>
           <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
-            Join WriteTrack today to detect AI-generated essays with our advanced keystroke analysis, and be first to access our code and LaTeX editors when they launch.
+            Join Rawk today to ensure students are genuinely learning and understanding. Help teachers verify authentic learning while empowering students to prove their comprehension.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" variant="secondary">
               <Link href="/auth?tab=login">Log In</Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="bg-transparent text-white hover:bg-white/10">
-              <Link href="/auth?tab=register">Create Account</Link>
+              <Link href="/auth?tab=register">Verify Learning</Link>
             </Button>
           </div>
         </div>
@@ -385,11 +385,11 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <img src="/logo.svg" alt="WriteTrack Logo" className="h-8 w-8" />
-                <span className="text-xl font-bold text-white">WriteTrack</span>
+                <img src="/logo.svg" alt="Rawk Logo" className="h-8 w-8" />
+                <span className="text-xl font-bold text-white">Rawk</span>
               </div>
               <p className="max-w-md">
-                Advanced keystroke analysis for detecting AI-generated content in essays, with upcoming support for code and mathematical equations, helping educators maintain academic integrity.
+                A learning verification platform that helps teachers see if students are truly understanding and helps students ensure they're genuinely learning—transforming AI interactions into meaningful educational experiences.
               </p>
             </div>
             <div>
@@ -405,14 +405,14 @@ export default function LandingPage() {
             <div>
               <h3 className="text-white font-semibold mb-4">Contact</h3>
               <ul className="space-y-2">
-                <li>Email: info@writetrack.edu</li>
+                <li>Email: info@rawk.edu</li>
                 <li>Phone: (555) 123-4567</li>
                 <li>Address: 123 Innovation Ave, Tech City</li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-12 pt-6 text-center">
-            <p>&copy; {new Date().getFullYear()} WriteTrack. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Rawk. All rights reserved.</p>
           </div>
         </div>
       </footer>

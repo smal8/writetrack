@@ -201,8 +201,8 @@ export default function AuthPage() {
         <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 p-4">
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-3 mb-4">
-              <img src="/logo.svg" alt="WriteTrack Logo" className="h-14 w-14 object-contain" />
-              <h1 className="text-4xl font-bold text-black">WriteTrack</h1>
+                              <img src="/logo.svg" alt="Rawk Logo" className="h-14 w-14 object-contain" />
+                <h1 className="text-4xl font-bold text-black">Rawk</h1>
             </div>
             <p className="text-lg text-black">
               Advanced keystroke analysis to detect AI-generated content in essays, code, and mathematical equations.
@@ -216,8 +216,8 @@ export default function AuthPage() {
 
           <Card className="auth-card">
             <CardHeader className="flex flex-col items-center text-center">
-              <img src="/logo.svg" alt="WriteTrack Logo" className="h-12 w-12 object-contain mb-2" />
-              <CardTitle>Welcome to WriteTrack</CardTitle>
+              <img src="/logo.svg" alt="Rawk Logo" className="h-12 w-12 object-contain mb-2" />
+              <CardTitle>Welcome to Rawk</CardTitle>
               <CardDescription>
                 Sign in to your account or create a new one
               </CardDescription>
