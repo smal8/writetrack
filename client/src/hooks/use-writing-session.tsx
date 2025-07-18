@@ -34,11 +34,23 @@ export function useWritingSession({
   const lastQuestionContentRef = useRef('');
   const isInitializedRef = useRef(false);
 
-  // Early return if submission ID is invalid
+  // Early return if submission ID is invalid - but still show word count
   if (!submissionId || submissionId === 0) {
+    // Calculate word count even without valid submission ID
+    const getCurrentWordCount = () => {
+      if (!content) return 0;
+      const words = content.trim().split(/\s+/).filter(word => word.length > 0);
+      if (content.endsWith(' ') || /[.!?]$/.test(content.trim())) {
+        return words.length;
+      }
+      return Math.max(0, words.length - 1);
+    };
+
+    const currentWordCount = getCurrentWordCount();
+    
     return {
-      currentWordCount: 0,
-      wordsUntilQuestions: 10,
+      currentWordCount,
+      wordsUntilQuestions: currentWordCount < 10 ? 10 - currentWordCount : 10 - (currentWordCount % 10),
       showQuestions: false,
       questions: [],
       handleQuestionsComplete: () => {},
@@ -65,9 +77,9 @@ export function useWritingSession({
     return Math.max(0, words.length - 1);
   }, [content]);
 
-  // Initialize on first load
+  // Initialize on first load - even with empty content
   useEffect(() => {
-    if (!isInitializedRef.current && content) {
+    if (!isInitializedRef.current) {
       const wordCount = getCurrentWordCount();
       setLastQuestionWordCount(Math.floor(wordCount / 10) * 10);
       lastQuestionContentRef.current = content;
@@ -76,7 +88,8 @@ export function useWritingSession({
       console.log('✅ Writing session initialized:', {
         wordCount,
         lastQuestionWordCount: Math.floor(wordCount / 10) * 10,
-        contentLength: content.length
+        contentLength: content.length,
+        isEmpty: !content
       });
     }
   }, [content, getCurrentWordCount]);
@@ -205,7 +218,16 @@ export function useWritingSession({
       contentLength: content.length,
       lastContentLength: lastQuestionContentRef.current.length,
       showQuestions,
-      isGenerating
+      isGenerating,
+      // Break down the conditions
+      conditions: {
+        hasEnoughWords: currentWordCount >= 10,
+        isAtTenWordBoundary: currentWordCount % 10 === 0,
+        isNewWordCount: currentWordCount > lastQuestionWordCount,
+        notShowingQuestions: !showQuestions,
+        notGenerating: !isGenerating,
+        hasNewContent: content.length > lastQuestionContentRef.current.length
+      }
     });
 
     if (shouldTrigger) {
@@ -260,6 +282,17 @@ export function useWritingSession({
         setLastQuestionWordCount(0);
         lastQuestionContentRef.current = '';
         isInitializedRef.current = false;
+      };
+
+      (window as any).forceTriggerQuestions = () => {
+        console.log('🔥 Force triggering questions...');
+        if (content.length > 0) {
+          setIsGenerating(true);
+          setLastQuestionWordCount(getCurrentWordCount());
+          generateQuestionsMutation.mutate();
+        } else {
+          console.log('❌ Cannot trigger questions - no content');
+        }
       };
     }
   }, [submissionId, getCurrentWordCount, lastQuestionWordCount, showQuestions, questions.length, isGenerating, content.length]);

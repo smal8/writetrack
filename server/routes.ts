@@ -225,6 +225,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         await storage.addStudentToClass(classId, newStudent.id);
 
+        // Create empty drafts for all existing assignments in the class
+        const existingAssignments = await storage.getClassAssignments(classId);
+        console.log(`Creating ${existingAssignments.length} empty drafts for new student ${newStudent.id} in class ${classId}`);
+        
+        let successfulDrafts = 0;
+        for (const assignment of existingAssignments) {
+          try {
+            // Check if draft already exists
+            const existingDraft = await storage.getDraftSubmission(assignment.id, newStudent.id);
+            if (existingDraft) {
+              console.log(`Draft already exists for student ${newStudent.id} in assignment ${assignment.id}`);
+              successfulDrafts++;
+              continue;
+            }
+            
+            const newDraft = await storage.createSubmission({
+              assignmentId: assignment.id,
+              studentId: newStudent.id,
+              content: "",
+              keystrokes: [],
+              quotes: [],
+              is_draft: true
+            });
+            console.log(`📝 DB ENTRY: Created submission ID ${newDraft.id} in submissions table (assignment_id: ${assignment.id}, student_id: ${newStudent.id}, is_draft: true)`);
+            successfulDrafts++;
+          } catch (error) {
+            console.error(`❌ Failed to create draft for new student ${newStudent.id} in assignment ${assignment.id}:`, error);
+          }
+        }
+        console.log(`✅ Created ${successfulDrafts}/${existingAssignments.length} empty drafts for new student`);
+
         res.status(201).json({
           message: "Student account created and added to class",
           studentId,
@@ -239,6 +270,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Add existing student to class
         await storage.addStudentToClass(classId, student.id);
+        
+        // Create empty drafts for all existing assignments in the class
+        const existingAssignments = await storage.getClassAssignments(classId);
+        console.log(`🔍 DEBUG: Creating ${existingAssignments.length} empty drafts for existing student ${student.id} added to class ${classId}`);
+        console.log(`🔍 DEBUG: Assignments in class:`, existingAssignments.map(a => ({ id: a.id, title: a.title })));
+        
+        let successfulDrafts = 0;
+        for (const assignment of existingAssignments) {
+          try {
+            console.log(`🔍 DEBUG: Processing assignment ${assignment.id} for student ${student.id}`);
+            
+            // Check if draft already exists
+            const existingDraft = await storage.getDraftSubmission(assignment.id, student.id);
+            if (existingDraft) {
+              console.log(`⚠️ Draft already exists for student ${student.id} in assignment ${assignment.id} - ID: ${existingDraft.id}`);
+              successfulDrafts++;
+              continue;
+            }
+            
+            console.log(`🔍 DEBUG: No existing draft found, creating new one...`);
+            const newDraft = await storage.createSubmission({
+              assignmentId: assignment.id,
+              studentId: student.id,
+              content: "",
+              keystrokes: [],
+              quotes: [],
+              is_draft: true
+            });
+            console.log(`✅ SUCCESS: Created submission ID ${newDraft.id} in submissions table (assignment_id: ${assignment.id}, student_id: ${student.id}, is_draft: true)`);
+            
+            // Verify it was created by querying it back
+            const verification = await storage.getDraftSubmission(assignment.id, student.id);
+            if (verification) {
+              console.log(`✅ VERIFIED: Draft submission ${verification.id} exists in database`);
+            } else {
+              console.log(`❌ VERIFICATION FAILED: Could not find draft after creation`);
+            }
+            
+            successfulDrafts++;
+          } catch (error) {
+            console.error(`❌ CRITICAL ERROR creating draft for existing student ${student.id} in assignment ${assignment.id}:`, error);
+            console.error(`Error details:`, error);
+          }
+        }
+        console.log(`📊 SUMMARY: Created ${successfulDrafts}/${existingAssignments.length} empty drafts for existing student`);
+        
         res.json({ message: "Student added to class" });
       }
     } catch (err: unknown) {
@@ -393,21 +470,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         teacherId: req.user.id,
       });
 
-      // Get all students in the class
+      // Get all students in the class and create empty drafts
       const students = await storage.getClassStudents(data.classId);
-      console.log(`Creating draft submissions for ${students.length} students in class ${data.classId}`);
+      console.log(`✅ Assignment ${assignment.id} created. Creating ${students.length} empty draft submissions for all students in class ${data.classId}`);
 
-      // Create initial draft submissions for all students
+      // Create initial empty draft submissions for all students in the class
+      let successfulDrafts = 0;
       for (const student of students) {
-        await storage.createSubmission({
-          assignmentId: assignment.id,
-          studentId: student.id,
-          content: "",
-          keystrokes: [],
-          quotes: [],
-          is_draft: true
-        });
+        try {
+                    // Check if draft already exists (shouldn't happen for new assignments, but be safe)
+          const existingDraft = await storage.getDraftSubmission(assignment.id, student.id);
+          if (existingDraft) {
+            console.log(`Draft already exists for student ${student.id} in new assignment ${assignment.id}`);
+            successfulDrafts++;
+            continue;
+          }
+          
+          const newDraft = await storage.createSubmission({
+            assignmentId: assignment.id,
+            studentId: student.id,
+            content: "",
+            keystrokes: [],
+            quotes: [],
+            is_draft: true
+          });
+            console.log(`📝 DB ENTRY: Created submission ID ${newDraft.id} in submissions table (assignment_id: ${assignment.id}, student_id: ${student.id}, is_draft: true)`);
+            successfulDrafts++;
+        } catch (error) {
+          console.error(`❌ Failed to create draft for student ${student.id} in assignment ${assignment.id}:`, error);
+        }
       }
+      
+      console.log(`✅ Created ${successfulDrafts}/${students.length} empty drafts for assignment "${assignment.title}"`);
 
       res.status(201).json(assignment);
     } catch (err) {
@@ -519,11 +613,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(finalSubmission); // Return the finalized submission
       }
 
-      // Check for existing draft
+      // Get draft submission (should always exist now)
       let draft = await storage.getDraftSubmission(assignmentId, req.user.id);
+
+      if (!draft) {
+        // This shouldn't happen anymore since drafts are created proactively,
+        // but keep as fallback for edge cases
+        console.log(`⚠️ No draft found for student ${req.user.id}, assignment ${assignmentId}. Creating fallback empty draft.`);
+        draft = await storage.createSubmission({
+          assignmentId,
+          studentId: req.user.id,
+          content: "",
+          keystrokes: [],
+          quotes: [],
+          is_draft: true
+        });
+        console.log(`✅ Created fallback draft submission with ID ${draft.id}`);
+      }
 
       res.json(draft);
     } catch (err) {
+      console.error('Error in draft route:', err);
       res.status(500).json({ message: "Failed to fetch draft" });
     }
   });
@@ -1617,6 +1727,58 @@ Return as JSON array:
     } catch (error) {
       console.error('Error fetching debug questions data:', error);
       res.status(500).json({ message: 'Failed to fetch questions data' });
+    }
+  });
+
+  // Debug endpoint to test empty draft creation
+  app.post("/api/debug/create-test-draft", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const { assignmentId, studentId } = req.body;
+      
+      console.log(`🧪 DEBUG: Testing draft creation for assignment ${assignmentId}, student ${studentId}`);
+      
+      // Check if draft already exists
+      const existingDraft = await storage.getDraftSubmission(assignmentId, studentId);
+      if (existingDraft) {
+        return res.json({ 
+          success: true, 
+          message: "Draft already exists", 
+          draftId: existingDraft.id 
+        });
+      }
+      
+      // Create test draft
+      const newDraft = await storage.createSubmission({
+        assignmentId,
+        studentId,
+        content: "",
+        keystrokes: [],
+        quotes: [],
+        is_draft: true
+      });
+      
+      console.log(`✅ DEBUG: Created test draft with ID ${newDraft.id}`);
+      
+      // Verify it exists
+      const verification = await storage.getDraftSubmission(assignmentId, studentId);
+      
+      res.json({
+        success: true,
+        message: "Test draft created successfully",
+        draftId: newDraft.id,
+        verified: !!verification
+      });
+      
+    } catch (error: any) {
+      console.error(`❌ DEBUG: Failed to create test draft:`, error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
     }
   });
 
