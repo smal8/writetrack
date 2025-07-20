@@ -36,8 +36,8 @@ export function Layout({ children }: LayoutProps) {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 font-bold hover:text-primary">
-              <img src="/logo.svg" alt="WriteTrack Logo" className="h-10 w-10 object-contain" />
-              <span className="text-xl md:text-2xl">WriteTrack</span>
+              <img src="/logo.svg" alt="Rawk Logo" className="h-10 w-10 object-contain" />
+              <span className="text-xl md:text-2xl">Rawk</span>
             </Link>
 
             {/* Desktop Navigation Links */}
@@ -79,8 +79,8 @@ export function Layout({ children }: LayoutProps) {
             <SheetContent>
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
-                  <img src="/logo.svg" alt="WriteTrack Logo" className="h-8 w-8 object-contain" />
-                  WriteTrack
+                  <img src="/logo.svg" alt="Rawk Logo" className="h-8 w-8 object-contain" />
+                  Rawk
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-4 mt-4">

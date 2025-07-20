@@ -1,0 +1,307 @@
+[
+    {
+        "key": "Enter",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:52.090Z"
+    },
+    {
+        "key": "Enter",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:54.012Z"
+    },
+    {
+        "key": "Shift",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:56.503Z"
+    },
+    {
+        "key": "T",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:56.620Z"
+    },
+    {
+        "key": "h",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:56.707Z"
+    },
+    {
+        "key": "i",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:56.779Z"
+    },
+    {
+        "key": "n",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:56.921Z"
+    },
+    {
+        "key": "g",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:57.013Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:57.158Z"
+    },
+    {
+        "key": "i",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:57.376Z"
+    },
+    {
+        "key": "s",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:57.463Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:57.549Z"
+    },
+    {
+        "key": "v",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:57.925Z"
+    },
+    {
+        "key": "e",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:58.000Z"
+    },
+    {
+        "key": "r",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:58.083Z"
+    },
+    {
+        "key": "y",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:58.147Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:58.213Z"
+    },
+    {
+        "key": "n",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:58.394Z"
+    },
+    {
+        "key": "i",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:58.461Z"
+    },
+    {
+        "key": "c",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:58.548Z"
+    },
+    {
+        "key": "e",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:58.612Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:59.061Z"
+    },
+    {
+        "key": "t",
+        "type": "input",
+        "timestamp": "2025-04-14T15:29:59.945Z"
+    },
+    {
+        "key": "o",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:00.013Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:00.085Z"
+    },
+    {
+        "key": "u",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:00.311Z"
+    },
+    {
+        "key": "s",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:00.415Z"
+    },
+    {
+        "key": "e",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:00.549Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:00.679Z"
+    },
+    {
+        "key": "Backspace",
+        "type": "delete",
+        "timestamp": "2025-04-14T15:30:01.101Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:01.499Z"
+    },
+    {
+        "key": "f",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:01.654Z"
+    },
+    {
+        "key": "o",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:01.714Z"
+    },
+    {
+        "key": "r",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:01.818Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:01.851Z"
+    },
+    {
+        "key": "t",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:01.963Z"
+    },
+    {
+        "key": "h",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:02.024Z"
+    },
+    {
+        "key": "e",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:02.102Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:02.177Z"
+    },
+    {
+        "key": "d",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:03.298Z"
+    },
+    {
+        "key": "r",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:03.473Z"
+    },
+    {
+        "key": "a",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:03.707Z"
+    },
+    {
+        "key": "f",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:03.854Z"
+    },
+    {
+        "key": "f",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:04.712Z"
+    },
+    {
+        "key": "t",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:04.867Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:04.937Z"
+    },
+    {
+        "key": "o",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:05.249Z"
+    },
+    {
+        "key": "f",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:05.379Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:05.446Z"
+    },
+    {
+        "key": "t",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:05.560Z"
+    },
+    {
+        "key": "h",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:05.615Z"
+    },
+    {
+        "key": "e",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:05.718Z"
+    },
+    {
+        "key": " ",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:05.784Z"
+    },
+    {
+        "key": "e",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:05.964Z"
+    },
+    {
+        "key": "a",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:06.350Z"
+    },
+    {
+        "key": "s",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:07.235Z"
+    },
+    {
+        "key": "s",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:07.414Z"
+    },
+    {
+        "key": "y",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:08.449Z"
+    },
+    {
+        "key": "Backspace",
+        "type": "delete",
+        "timestamp": "2025-04-14T15:30:09.044Z"
+    },
+    {
+        "key": "a",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:09.133Z"
+    },
+    {
+        "key": "y",
+        "type": "input",
+        "timestamp": "2025-04-14T15:30:09.236Z"
+    }
+]

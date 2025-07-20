@@ -13,6 +13,12 @@ import * as schema from "../shared/schema";
 import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
+import OpenAI from 'openai';
+
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -111,7 +117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create temporary password for student
-      const tempPassword = randomBytes(8).toString('hex');
+      const tempPassword = "student";
       const hashedPassword = await hashPassword(tempPassword);
       
       // Create student account
@@ -208,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const student = await storage.getUserByStudentId(studentId);
       if (!student) {
         // Create new student account if doesn't exist
-        const tempPassword = randomBytes(8).toString('hex');
+        const tempPassword = "student";
         const hashedPassword = await hashPassword(tempPassword);
         const username = `${studentId}@temp.edu`;
 
@@ -218,6 +224,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         await storage.addStudentToClass(classId, newStudent.id);
+
+        // Create empty drafts for all existing assignments in the class
+        const existingAssignments = await storage.getClassAssignments(classId);
+        console.log(`Creating ${existingAssignments.length} empty drafts for new student ${newStudent.id} in class ${classId}`);
+        
+        let successfulDrafts = 0;
+        for (const assignment of existingAssignments) {
+          try {
+            // Check if draft already exists
+            const existingDraft = await storage.getDraftSubmission(assignment.id, newStudent.id);
+            if (existingDraft) {
+              console.log(`Draft already exists for student ${newStudent.id} in assignment ${assignment.id}`);
+              successfulDrafts++;
+              continue;
+            }
+            
+            const newDraft = await storage.createSubmission({
+              assignmentId: assignment.id,
+              studentId: newStudent.id,
+              content: "",
+              keystrokes: [],
+              quotes: [],
+              is_draft: true
+            });
+            console.log(`📝 DB ENTRY: Created submission ID ${newDraft.id} in submissions table (assignment_id: ${assignment.id}, student_id: ${newStudent.id}, is_draft: true)`);
+            successfulDrafts++;
+          } catch (error) {
+            console.error(`❌ Failed to create draft for new student ${newStudent.id} in assignment ${assignment.id}:`, error);
+          }
+        }
+        console.log(`✅ Created ${successfulDrafts}/${existingAssignments.length} empty drafts for new student`);
 
         res.status(201).json({
           message: "Student account created and added to class",
@@ -233,6 +270,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Add existing student to class
         await storage.addStudentToClass(classId, student.id);
+        
+        // Create empty drafts for all existing assignments in the class
+        const existingAssignments = await storage.getClassAssignments(classId);
+        console.log(`🔍 DEBUG: Creating ${existingAssignments.length} empty drafts for existing student ${student.id} added to class ${classId}`);
+        console.log(`🔍 DEBUG: Assignments in class:`, existingAssignments.map(a => ({ id: a.id, title: a.title })));
+        
+        let successfulDrafts = 0;
+        for (const assignment of existingAssignments) {
+          try {
+            console.log(`🔍 DEBUG: Processing assignment ${assignment.id} for student ${student.id}`);
+            
+            // Check if draft already exists
+            const existingDraft = await storage.getDraftSubmission(assignment.id, student.id);
+            if (existingDraft) {
+              console.log(`⚠️ Draft already exists for student ${student.id} in assignment ${assignment.id} - ID: ${existingDraft.id}`);
+              successfulDrafts++;
+              continue;
+            }
+            
+            console.log(`🔍 DEBUG: No existing draft found, creating new one...`);
+            const newDraft = await storage.createSubmission({
+              assignmentId: assignment.id,
+              studentId: student.id,
+              content: "",
+              keystrokes: [],
+              quotes: [],
+              is_draft: true
+            });
+            console.log(`✅ SUCCESS: Created submission ID ${newDraft.id} in submissions table (assignment_id: ${assignment.id}, student_id: ${student.id}, is_draft: true)`);
+            
+            // Verify it was created by querying it back
+            const verification = await storage.getDraftSubmission(assignment.id, student.id);
+            if (verification) {
+              console.log(`✅ VERIFIED: Draft submission ${verification.id} exists in database`);
+            } else {
+              console.log(`❌ VERIFICATION FAILED: Could not find draft after creation`);
+            }
+            
+            successfulDrafts++;
+          } catch (error) {
+            console.error(`❌ CRITICAL ERROR creating draft for existing student ${student.id} in assignment ${assignment.id}:`, error);
+            console.error(`Error details:`, error);
+          }
+        }
+        console.log(`📊 SUMMARY: Created ${successfulDrafts}/${existingAssignments.length} empty drafts for existing student`);
+        
         res.json({ message: "Student added to class" });
       }
     } catch (err: unknown) {
@@ -387,21 +470,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         teacherId: req.user.id,
       });
 
-      // Get all students in the class
+      // Get all students in the class and create empty drafts
       const students = await storage.getClassStudents(data.classId);
-      console.log(`Creating draft submissions for ${students.length} students in class ${data.classId}`);
+      console.log(`✅ Assignment ${assignment.id} created. Creating ${students.length} empty draft submissions for all students in class ${data.classId}`);
 
-      // Create initial draft submissions for all students
+      // Create initial empty draft submissions for all students in the class
+      let successfulDrafts = 0;
       for (const student of students) {
-        await storage.createSubmission({
-          assignmentId: assignment.id,
-          studentId: student.id,
-          content: "",
-          keystrokes: [],
-          quotes: [],
-          is_draft: true
-        });
+        try {
+                    // Check if draft already exists (shouldn't happen for new assignments, but be safe)
+          const existingDraft = await storage.getDraftSubmission(assignment.id, student.id);
+          if (existingDraft) {
+            console.log(`Draft already exists for student ${student.id} in new assignment ${assignment.id}`);
+            successfulDrafts++;
+            continue;
+          }
+          
+          const newDraft = await storage.createSubmission({
+            assignmentId: assignment.id,
+            studentId: student.id,
+            content: "",
+            keystrokes: [],
+            quotes: [],
+            is_draft: true
+          });
+            console.log(`📝 DB ENTRY: Created submission ID ${newDraft.id} in submissions table (assignment_id: ${assignment.id}, student_id: ${student.id}, is_draft: true)`);
+            successfulDrafts++;
+        } catch (error) {
+          console.error(`❌ Failed to create draft for student ${student.id} in assignment ${assignment.id}:`, error);
+        }
       }
+      
+      console.log(`✅ Created ${successfulDrafts}/${students.length} empty drafts for assignment "${assignment.title}"`);
 
       res.status(201).json(assignment);
     } catch (err) {
@@ -513,85 +613,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(finalSubmission); // Return the finalized submission
       }
 
-      // Check for existing draft
+      // Get draft submission (should always exist now)
       let draft = await storage.getDraftSubmission(assignmentId, req.user.id);
 
-//       // If no draft exists, create one with sample text
-//       if (!draft) {
-//         const sampleEssay = `Title: The Impact of Technology on Modern Education
-
-// In recent years, technology has revolutionized the way we learn and teach. From interactive online platforms to artificial intelligence-powered tutoring systems, the educational landscape has undergone a dramatic transformation.
-
-// First, digital tools have made learning more accessible than ever before. Students can now access vast libraries of information from anywhere in the world, breaking down geographical barriers to education. Virtual classrooms enable real-time collaboration between students and teachers across different time zones.
-
-// Furthermore, personalized learning experiences have become possible through adaptive technologies. These systems can identify individual student needs and adjust the curriculum accordingly, ensuring that each learner progresses at their optimal pace.
-
-// However, this technological integration also presents challenges. Issues of digital literacy, access inequality, and screen time management must be carefully considered. As we move forward, finding the right balance between traditional teaching methods and technological innovation will be crucial.
-
-// In conclusion, while technology has undoubtedly enhanced educational opportunities, its implementation must be thoughtful and purposeful. The future of education lies in harmoniously blending the best of both traditional and digital approaches to create engaging, effective learning experiences.`;
-
-//         const now = new Date();
-//         // Create keystroke patterns that simulate copy-paste behavior
-//         const sampleKeystrokes = [];
-
-//         // First burst - normal typing
-//         for (let i = 0; i < 20; i++) {
-//           sampleKeystrokes.push({
-//             timestamp: new Date(now.getTime() - (60000 * 30) + (i * 2000)).toISOString(), // Every 2 seconds
-//             type: 'input',
-//             key: String.fromCharCode(65 + (i % 26)) // A-Z keys
-//           });
-//         }
-
-//         // Gap of inactivity
-
-//         // Second burst - rapid input (simulating paste)
-//         for (let i = 0; i < 30; i++) {
-//           sampleKeystrokes.push({
-//             timestamp: new Date(now.getTime() - (60000 * 20) + (i * 100)).toISOString(), // Every 0.1 seconds
-//             type: 'input',
-//             key: String.fromCharCode(65 + (i % 26))
-//           });
-//         }
-
-//         // Some deletions
-//         for (let i = 0; i < 5; i++) {
-//           sampleKeystrokes.push({
-//             timestamp: new Date(now.getTime() - (60000 * 15) + (i * 1000)).toISOString(),
-//             type: 'delete'
-//           });
-//         }
-
-//         // Third burst - another paste
-//         for (let i = 0; i < 25; i++) {
-//           sampleKeystrokes.push({
-//             timestamp: new Date(now.getTime() - (60000 * 10) + (i * 50)).toISOString(), // Every 0.05 seconds
-//             type: 'input',
-//             key: String.fromCharCode(65 + (i % 26))
-//           });
-//         }
-
-//         // Final normal typing
-//         for (let i = 0; i < 15; i++) {
-//           sampleKeystrokes.push({
-//             timestamp: new Date(now.getTime() - (60000 * 5) + (i * 3000)).toISOString(), // Every 3 seconds
-//             type: 'input',
-//             key: String.fromCharCode(65 + (i % 26))
-//           });
-//         }
-
-//         draft = await storage.createSubmission({
-//           assignmentId,
-//           studentId: req.user.id,
-//           content: sampleEssay,
-//           keystrokes: sampleKeystrokes,
-//           quotes: [],
-//           is_draft: true
-//         });
-//       }
+      if (!draft) {
+        // This shouldn't happen anymore since drafts are created proactively,
+        // but keep as fallback for edge cases
+        console.log(`⚠️ No draft found for student ${req.user.id}, assignment ${assignmentId}. Creating fallback empty draft.`);
+        draft = await storage.createSubmission({
+          assignmentId,
+          studentId: req.user.id,
+          content: "",
+          keystrokes: [],
+          quotes: [],
+          is_draft: true
+        });
+        console.log(`✅ Created fallback draft submission with ID ${draft.id}`);
+      }
 
       res.json(draft);
     } catch (err) {
+      console.error('Error in draft route:', err);
       res.status(500).json({ message: "Failed to fetch draft" });
     }
   });
@@ -1363,6 +1405,380 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error analyzing submission:', error);
       res.status(500).json({ message: "Failed to analyze submission" });
+    }
+  });
+
+  // Simplified session questions endpoint
+  app.post('/api/sessions/questions', async (req, res) => {
+    try {
+      const { submissionId, questions, answers, contextContent } = req.body;
+      
+      console.log(`📥 REWRITTEN: Saving questions for submission ${submissionId}`);
+      console.log(`Questions: ${questions?.length || 0}, Answers: ${answers?.length || 0}`);
+      
+      if (!questions || questions.length === 0) {
+        console.log('⚠️ No questions provided, skipping save');
+        return res.json({ success: true, message: 'No questions to save' });
+      }
+      
+      // Create a new session for this question trigger
+      const session = await storage.createSessionForQuestionTrigger(submissionId, contextContent || '');
+      console.log(`📝 Created session ${session.id} for submission ${submissionId}`);
+      
+      // Save the questions and answers using the rewritten method
+      const result = await storage.saveSessionQuestions(
+        session.id,
+        questions,
+        answers || [],
+        contextContent || '',
+        0
+      );
+
+      // Mark session as completed
+      await storage.updateSessionQuestions(session.id, true, true);
+
+      console.log('✅ REWRITTEN: Successfully saved session questions and answers');
+      res.json({ 
+        success: true, 
+        sessionId: session.id,
+        questionsCount: questions.length,
+        answersCount: answers?.length || 0
+      });
+      
+    } catch (error) {
+      console.error('❌ REWRITTEN ERROR in sessions/questions route:', error);
+      res.status(500).json({ error: 'Failed to save session questions' });
+    }
+  });
+
+  // Simplify generate questions endpoint
+  app.post('/api/sessions/generate-questions', async (req, res) => {
+    try {
+      const { content, fullContent, previousContent, assignmentTitle, submissionId, isIncremental } = req.body;
+      
+      console.log(`🎯 Generating questions - isIncremental: ${isIncremental}, newContentLength: ${content?.length}, previousContentLength: ${previousContent?.length}`);
+      
+      // Get previous questions for this submission to avoid repetition
+      const previousQuestions = await storage.getPreviousQuestionsForSubmission(submissionId);
+      const previousQuestionTexts = previousQuestions.map(q => q.question);
+      
+      console.log(`📚 Found ${previousQuestions.length} previous questions for submission ${submissionId}`);
+      
+      // Check if OpenAI API key is available
+      if (!process.env.OPENAI_API_KEY) {
+        console.log('⚠️ No OpenAI API key found, skipping question generation');
+        return res.json({ questions: [] });
+      }
+      
+      console.log('🔑 OpenAI API key found, attempting to generate questions...');
+      
+      // Generate questions using OpenAI with improved prompts and retry logic
+      let prompt;
+      
+      if (isIncremental && previousContent) {
+        // More detailed prompt for incremental content
+        prompt = `A student is working on an essay titled "${assignmentTitle || 'their assignment'}". They have just added new content to their existing essay. Generate 3 highly specific, thought-provoking questions that help them reflect on what they just wrote and how it improves their overall argument.
+
+CONTEXT - What they had written before:
+"${previousContent.length > 1000 ? previousContent.substring(0, 1000) + '...' : previousContent}"
+
+NEW CONTENT they just added (focus on this):
+"${content.length > 800 ? content.substring(0, 800) + '...' : content}"
+
+FULL CURRENT ESSAY (for context):
+"${fullContent?.length > 1200 ? fullContent.substring(0, 1200) + '...' : fullContent || content}"
+
+PREVIOUS QUESTIONS ASKED (don't repeat these concepts):
+${previousQuestionTexts.length > 0 ? previousQuestionTexts.map((q, i) => `${i + 1}. ${q}`).join('\n') : 'None yet'}
+
+Create 3 SPECIFIC questions that:
+- Question 1: Analyze the NEW content's clarity, effectiveness, or argument strength (be specific about what they wrote)
+- Question 2: Examine how the NEW content connects to their main thesis and strengthens the overall argument
+- Question 3: Evaluate the essay's improvement - structure, flow, evidence, or persuasiveness
+
+REQUIREMENTS:
+- Reference specific content they wrote (use quotes when possible)
+- Ask about concrete elements like evidence, examples, word choice, transitions
+- Avoid generic questions like "What is your main point?" 
+- Make each question unique and tailored to their actual writing
+- Don't repeat concepts from previous questions
+
+Return as JSON array:
+[
+  {"question": "Your specific question here"},
+  {"question": "Your specific question here"},
+  {"question": "Your specific question here"}
+]`;
+      } else {
+        // Improved prompt for initial content
+        prompt = `A student is writing an essay titled "${assignmentTitle || 'their assignment'}". Generate 3 highly specific, analytical questions about their writing so far.
+
+ESSAY CONTENT:
+"${content.length > 1500 ? content.substring(0, 1500) + '...' : content}"
+
+PREVIOUS QUESTIONS ASKED (don't repeat these concepts):
+${previousQuestionTexts.length > 0 ? previousQuestionTexts.map((q, i) => `${i + 1}. ${q}`).join('\n') : 'None yet'}
+
+Create 3 SPECIFIC questions that:
+- Reference actual content from their essay (use quotes when possible)
+- Focus on concrete elements: thesis clarity, evidence quality, argument structure, examples, word choice
+- Help them think critically about their writing choices
+- Are tailored to what they actually wrote (not generic)
+
+AVOID these generic questions:
+- "What is your main argument?"
+- "How does this support your thesis?"
+- "What evidence do you have?"
+
+INSTEAD, ask specific questions like:
+- "You wrote '[specific quote]' - how does this claim address potential counterarguments?"
+- "Your example about [specific example] effectively illustrates [point] - what additional evidence could strengthen this further?"
+- "The transition between your points about [topic A] and [topic B] could be clearer - what connection do you want readers to see?"
+
+Return as JSON array:
+[
+  {"question": "Your specific question referencing their actual content"},
+  {"question": "Your specific question about their writing choices"},
+  {"question": "Your specific question about structure/argument/evidence"}
+]`;
+      }
+
+      // Multiple attempts with different strategies
+      let attempts = 0;
+      const maxAttempts = 2;
+      
+      while (attempts < maxAttempts) {
+        try {
+          const completion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 800,
+            temperature: 0.9, // Higher temperature for more diverse questions
+          });
+
+          const responseContent = completion.choices[0].message.content;
+          
+                      // Clean and parse JSON response with better error handling
+            let questionsData = [];
+            try {
+              // Clean the response by removing any markdown formatting and trailing commas
+              let cleanedContent = responseContent?.replace(/```json|```/g, '').trim() || '[]';
+              // Remove trailing commas before closing brackets/braces (improved regex)
+              cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
+              // Also handle trailing commas after the last array element
+              cleanedContent = cleanedContent.replace(/,(\s*\])/g, '$1');
+              questionsData = JSON.parse(cleanedContent);
+            
+            // Validate that we got an array
+            if (!Array.isArray(questionsData)) {
+              throw new Error('Response is not an array');
+            }
+            
+            // Validate that questions have the expected format and aren't too similar to previous ones
+            if (questionsData.length === 0 || !questionsData[0].question) {
+              throw new Error('Invalid question format');
+            }
+            
+            // Filter out questions too similar to previous ones
+            const filteredQuestions = questionsData.filter(newQ => {
+              const newQuestion = newQ.question.toLowerCase();
+              return !previousQuestionTexts.some(prevQ => {
+                const prevQuestion = prevQ.toLowerCase();
+                // Check for similarity (simple word overlap check)
+                const newWords = newQuestion.split(' ').filter((w: string) => w.length > 3);
+                const prevWords = prevQuestion.split(' ').filter((w: string) => w.length > 3);
+                const commonWords = newWords.filter((w: string) => prevWords.includes(w));
+                return commonWords.length > newWords.length * 0.4; // More than 40% word overlap
+              });
+            });
+            
+            // If we have good unique questions, use them
+            if (filteredQuestions.length >= 2) {
+              questionsData = filteredQuestions.slice(0, 3);
+            }
+            
+            // Format questions with IDs
+            const questions = questionsData.slice(0, 3).map((q: any, index: number) => ({
+              id: `q_${Date.now()}_${index}`,
+              question: q.question,
+              questionNumber: index + 1
+            }));
+
+            console.log(`✅ Generated ${questions.length} tailored questions for ${isIncremental ? 'incremental' : 'initial'} content`);
+            return res.json({ questions });
+            
+          } catch (parseError) {
+            console.error('JSON parsing error on attempt', attempts + 1, ':', parseError);
+            console.error('Raw OpenAI response:', responseContent);
+            console.error('Cleaned content:', cleanedContent);
+            
+            if (attempts === maxAttempts - 1) {
+              throw new Error('Failed to parse OpenAI response after all attempts');
+            }
+            
+            // Modify prompt for retry
+            prompt = prompt.replace('Return as JSON array:', 'Return ONLY a valid JSON array with no extra text:');
+            attempts++;
+            continue;
+          }
+          
+        } catch (openaiError) {
+          console.error('OpenAI API error on attempt', attempts + 1, ':', openaiError);
+          
+          if (attempts === maxAttempts - 1) {
+            // After all attempts failed, gracefully skip questions rather than show generic ones
+            console.log('🔄 All question generation attempts failed, skipping questions for this trigger');
+            return res.json({ questions: [] });
+          }
+          
+          attempts++;
+          // Wait a bit before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error generating questions:', error);
+      res.status(500).json({ error: 'Failed to generate questions' });
+    }
+  });
+
+
+
+  // Get writing session history for a submission
+  app.get('/api/submissions/:submissionId/sessions', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const submissionId = parseInt(req.params.submissionId);
+
+      // Get all writing sessions for this submission
+      const sessions = await storage.getSessionsBySubmission(submissionId);
+      
+      // Reverse the order to show oldest first (chronological progression)
+      const chronologicalSessions = sessions.reverse();
+
+      // Get all questions for these sessions
+      const sessionsWithQuestions = await Promise.all(
+        chronologicalSessions.map(async (session) => {
+          const questions = await storage.getSessionQuestions(session.id);
+          return {
+            ...session,
+            questions
+          };
+        })
+      );
+
+      res.json({
+        submissionId,
+        totalSessions: sessionsWithQuestions.length,
+        sessions: sessionsWithQuestions
+      });
+    } catch (error) {
+      console.error('Error fetching session history:', error);
+      res.status(500).json({ message: 'Failed to fetch session history' });
+    }
+  });
+
+  // Debug endpoint to view all questions and answers for a submission
+  app.get('/api/debug/submissions/:submissionId/questions', async (req, res) => {
+    try {
+      const submissionId = parseInt(req.params.submissionId);
+
+      // Use the optimized Drizzle method that gets everything in one query
+      const allData = await storage.getSubmissionSessionsWithQuestions(submissionId);
+      
+      console.log(`📊 Debug: Found ${allData.length} sessions for submission ${submissionId}`);
+
+      // Format the data for the response
+      const formattedSessions = allData.map(session => ({
+        sessionId: session.id,
+        sessionNumber: session.sessionNumber,
+        startTime: session.startTime,
+        contentAtStart: session.contentAtStart?.substring(0, 200) + '...',
+        questionsTriggered: session.questionsTriggered,
+        questionsCompleted: session.questionsCompleted,
+        questions: session.questions.map((q: any) => ({
+          id: q.id,
+          questionNumber: q.questionNumber,
+          question: q.question,
+          answer: q.answer || 'No answer',
+          timeToAnswer: q.timeToAnswer,
+          timedOut: q.timedOut,
+          generatedAt: q.generatedAt,
+          askedAt: q.askedAt,
+          answeredAt: q.answeredAt
+        }))
+      }));
+
+      const totalQuestions = formattedSessions.reduce((sum, session) => sum + session.questions.length, 0);
+      const totalAnswered = formattedSessions.reduce((sum, session) => 
+        sum + session.questions.filter((q: any) => q.answer !== 'No answer').length, 0);
+
+      res.json({
+        submissionId,
+        totalSessions: formattedSessions.length,
+        totalQuestions,
+        totalAnswered,
+        sessions: formattedSessions
+      });
+    } catch (error) {
+      console.error('Error fetching debug questions data:', error);
+      res.status(500).json({ message: 'Failed to fetch questions data' });
+    }
+  });
+
+  // Debug endpoint to test empty draft creation
+  app.post("/api/debug/create-test-draft", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const { assignmentId, studentId } = req.body;
+      
+      console.log(`🧪 DEBUG: Testing draft creation for assignment ${assignmentId}, student ${studentId}`);
+      
+      // Check if draft already exists
+      const existingDraft = await storage.getDraftSubmission(assignmentId, studentId);
+      if (existingDraft) {
+        return res.json({ 
+          success: true, 
+          message: "Draft already exists", 
+          draftId: existingDraft.id 
+        });
+      }
+      
+      // Create test draft
+      const newDraft = await storage.createSubmission({
+        assignmentId,
+        studentId,
+        content: "",
+        keystrokes: [],
+        quotes: [],
+        is_draft: true
+      });
+      
+      console.log(`✅ DEBUG: Created test draft with ID ${newDraft.id}`);
+      
+      // Verify it exists
+      const verification = await storage.getDraftSubmission(assignmentId, studentId);
+      
+      res.json({
+        success: true,
+        message: "Test draft created successfully",
+        draftId: newDraft.id,
+        verified: !!verification
+      });
+      
+    } catch (error: any) {
+      console.error(`❌ DEBUG: Failed to create test draft:`, error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
     }
   });
 

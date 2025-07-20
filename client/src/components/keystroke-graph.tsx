@@ -8,16 +8,19 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceArea,
-  ReferenceLine
+  ReferenceLine,
+  ReferenceLineProps
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+
 interface KeystrokeGraphProps {
   keystrokes: any[];
+  sessionQuestions?: any[]; // Keep for compatibility but unused
   onTimeRangeSelected?: (startTime: string, endTime: string, keystrokesInRange: any[]) => void;
 }
 
-export function KeystrokeGraph({ keystrokes, onTimeRangeSelected }: KeystrokeGraphProps) {
+export function KeystrokeGraph({ keystrokes, sessionQuestions = [], onTimeRangeSelected }: KeystrokeGraphProps) {
   const [data, setData] = useState<any[]>([]);
   const [left, setLeft] = useState<string | null>(null);
   const [right, setRight] = useState<string | null>(null);
@@ -30,8 +33,13 @@ export function KeystrokeGraph({ keystrokes, onTimeRangeSelected }: KeystrokeGra
   const [selectedTimeRange, setSelectedTimeRange] = useState<{start: string, end: string} | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
 
+
   // Store the keystrokes with their time buckets for easy retrieval
   const [keystrokesByTime, setKeystrokesByTime] = useState<Record<string, any[]>>({});
+  
+
+  
+
   
   useEffect(() => {
     // Group keystrokes by 1-second intervals for detailed visualization
@@ -201,50 +209,35 @@ export function KeystrokeGraph({ keystrokes, onTimeRangeSelected }: KeystrokeGra
   };
 
   const handleMouseUp = () => {
-    if (refAreaLeft && refAreaRight) {
+    // Only zoom if we have both left and right
+    if (refAreaLeft && refAreaRight && refAreaLeft !== refAreaRight) {
       zoomIn();
+    } else {
+      setRefAreaLeft('');
+      setRefAreaRight('');
     }
   };
-  
-  // Function to get all keystrokes within a time range
-  const getKeystrokesInTimeRange = (startTime: string, endTime: string): any[] => {
-    if (!startTime || !endTime) return [];
-    
-    // Get all time keys between startTime and endTime
-    const timeKeys = Object.keys(keystrokesByTime)
-      .filter(timeKey => {
-        // Convert to timestamps for comparison
-        const startTimestamp = new Date(`2023-01-01 ${startTime}`).getTime();
-        const endTimestamp = new Date(`2023-01-01 ${endTime}`).getTime();
-        const keyTimestamp = new Date(`2023-01-01 ${timeKey}`).getTime();
-        
-        return keyTimestamp >= startTimestamp && keyTimestamp <= endTimestamp;
-      });
-    
-    // Collect all keystrokes from these time buckets
-    const keystrokesInRange: any[] = [];
-    timeKeys.forEach(key => {
-      keystrokesInRange.push(...keystrokesByTime[key]);
-    });
-    
-    // Sort by timestamp
-    return keystrokesInRange.sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
-  };
-  
-  // Function to notify parent component of time range selection
+
+
+
+  // Helper function to notify parent component about time range selection
   const notifyTimeRangeSelected = (startTime: string, endTime: string) => {
-    if (!startTime || !endTime) return;
-    
-    // Store the selected time range
-    setSelectedTimeRange({ start: startTime, end: endTime });
-    
-    // Get all keystrokes within the selected time range
-    const keystrokesInRange = getKeystrokesInTimeRange(startTime, endTime);
-    
-    // Call the callback function if provided
     if (onTimeRangeSelected) {
+      const keystrokesInRange: any[] = [];
+      
+      const startIndex = data.findIndex(d => d.time === startTime);
+      const endIndex = data.findIndex(d => d.time === endTime);
+      
+      if (startIndex !== -1 && endIndex !== -1) {
+        for (let i = startIndex; i <= endIndex; i++) {
+          const timePoint = data[i];
+          if (timePoint && keystrokesByTime[timePoint.time]) {
+            keystrokesInRange.push(...keystrokesByTime[timePoint.time]);
+          }
+        }
+      }
+      
+      setSelectedTimeRange({ start: startTime, end: endTime });
       onTimeRangeSelected(startTime, endTime, keystrokesInRange);
     }
   };
@@ -299,52 +292,25 @@ export function KeystrokeGraph({ keystrokes, onTimeRangeSelected }: KeystrokeGra
       setVerticalOffset(prev => Math.min(Math.max(prev + scrollAmount, 0), range));
     }
   };
-  
-  // Update yAxisRange whenever top or bottom changes
-  useEffect(() => {
-    const min = bottom === 'auto' ? 0 : bottom as number;
-    const maxDataValue = data.length > 0 ? Math.max(...data.map(d => d.count)) : 10;
-    
-    // Add a significant cushion (50%) to ensure no cutoff
-    const max = top === 'auto' ? 
-      maxDataValue * 1.5 + 10 : // 50% more space plus a fixed buffer
-      (top as number) * 1.5;    // 50% more space for zoomed areas
-    
-    setYAxisRange({ min, max });
-    setVerticalOffset(0); // Reset vertical offset on domain change
-  }, [data, top, bottom]);
-  
-  // Calculate actual domain for Y axis with offset
-  const getYAxisDomain = () => {
-    const range = yAxisRange.max - yAxisRange.min;
-    if (range <= 0) return [0, 10];
-    
-    if (bottom === 'auto' || top === 'auto') {
-      // For auto scaling, ensure we have plenty of cushion at the top
-      const maxDataValue = data.length > 0 ? Math.max(...data.map(d => d.count)) : 10;
-      return [0, maxDataValue * 1.5 + 10];
-    }
-    
-    return [
-      Math.max(yAxisRange.min + verticalOffset, 0),
-      Math.min(yAxisRange.max + verticalOffset, yAxisRange.max * 2) // Double max height for extra cushion
-    ];
-  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex justify-between items-center">
-          <span>Editing Activity Over Time</span>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span>Editing Activity Timeline</span>
+
+          </div>
           <div className="flex gap-2">
             <button 
               onClick={() => {
-                setVerticalOffset(0);
                 setLeft(null);
                 setRight(null);
-                // Clear selection when resetting view
+                setTop('auto');
+                setBottom('auto');
                 setSelectedTimeRange(null);
                 setSelectedPoint(null);
+                setZoomHistory([]);
                 if (onTimeRangeSelected) {
                   onTimeRangeSelected('', '', []);
                 }
@@ -380,11 +346,13 @@ export function KeystrokeGraph({ keystrokes, onTimeRangeSelected }: KeystrokeGra
           </span>
           
           {selectedPoint && (
-            <span className="inline-flex items-center">
+            <span className="inline-flex items-center mr-4">
               <span className="inline-block w-3 h-3 bg-amber-500 rounded-full mr-1"></span>
               <span>Selected Point</span>
             </span>
           )}
+
+
         </div>
         
         <div 
@@ -418,7 +386,7 @@ export function KeystrokeGraph({ keystrokes, onTimeRangeSelected }: KeystrokeGra
                 }}
               />
               <YAxis 
-                domain={getYAxisDomain()}
+                domain={bottom === 'auto' && top === 'auto' ? undefined : [bottom as number, top as number]}
                 allowDataOverflow
                 width={50}
               />
@@ -495,6 +463,8 @@ export function KeystrokeGraph({ keystrokes, onTimeRangeSelected }: KeystrokeGra
                   }}
                 />
               )}
+
+
               
               {refAreaLeft && refAreaRight && (
                 <ReferenceArea
@@ -508,12 +478,16 @@ export function KeystrokeGraph({ keystrokes, onTimeRangeSelected }: KeystrokeGra
             </LineChart>
           </ResponsiveContainer>
         </div>
+
+
+
         <div className="mt-2 text-xs text-muted-foreground">
           <p>
             <strong>Controls:</strong> Click on individual points to see what was written at that specific time.
             Click and drag horizontally to zoom in and select a time range. 
             Use mouse wheel to scroll vertically. Use "Reset View" to clear the selection and "Zoom Out" to return to previous zoom level.
           </p>
+
         </div>
       </CardContent>
     </Card>

@@ -50,6 +50,16 @@ export function Editor({ value, onChange, readOnly = false }: EditorProps) {
   const [isSpellCheckLoaded, setIsSpellCheckLoaded] = useState(false);
   const [dictionary, setDictionary] = useState<any>(null);
   
+  // Track cursor position to hide tooltips when cursor is on misspelled word
+  const [cursorPosition, setCursorPosition] = useState<number>(0);
+  
+  // Handle cursor position changes
+  const handleCursorPositionChange = useCallback(() => {
+    if (textareaRef.current) {
+      setCursorPosition(textareaRef.current.selectionStart);
+    }
+  }, []);
+  
   // Initialize undo stack with initial value
   useEffect(() => {
     if (undoStack.length === 0) {
@@ -189,6 +199,8 @@ export function Editor({ value, onChange, readOnly = false }: EditorProps) {
   }, [undoStack, redoStack, onChange, keystrokesRef]);
   
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (readOnly) return;
+    
     // Check if typing is within a quote
     preventQuoteEditing(e);
     
@@ -232,9 +244,11 @@ export function Editor({ value, onChange, readOnly = false }: EditorProps) {
       keystrokesRef.current = [...keystrokesRef.current, newKeystroke];
       setKeystrokes(keystrokesRef.current);
     }
-  }, [quoteRanges, preventQuoteEditing, handleUndo, handleRedo]);
+  }, [quoteRanges, preventQuoteEditing, handleUndo, handleRedo, readOnly]);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (readOnly) return;
+    
     const newValue = e.target.value;
     
     if (newValue !== lastValue) {
@@ -244,7 +258,7 @@ export function Editor({ value, onChange, readOnly = false }: EditorProps) {
     }
     
     onChange(newValue, keystrokesRef.current);
-  }, [onChange, lastValue, undoStack]);
+  }, [onChange, lastValue, undoStack, readOnly]);
   
   // Internal copy: store the selected text from the editor.
   const handleCopy = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -256,20 +270,30 @@ export function Editor({ value, onChange, readOnly = false }: EditorProps) {
   
   // Internal cut: store the selected text from the editor.
   const handleCut = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (readOnly) {
+      e.preventDefault();
+      return;
+    }
+    
     const textarea = e.target as HTMLTextAreaElement;
     const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
     internalClipboardRef.current = selectedText;
     // Allow default cut behavior.
-  }, []);
+  }, [readOnly]);
   
   // On paste, only allow if the pasted text matches what was copied/cut internally.
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (readOnly) {
+      e.preventDefault();
+      return;
+    }
+    
     const pasteData = e.clipboardData.getData('text');
     if (internalClipboardRef.current !== pasteData) {
       // Block paste from external sources.
       e.preventDefault();
     }
-  }, []);
+  }, [readOnly]);
   
   // Prevent dropping external text into the editor.
   const handleDrop = useCallback((e: React.DragEvent<HTMLTextAreaElement>) => {
@@ -302,10 +326,14 @@ export function Editor({ value, onChange, readOnly = false }: EditorProps) {
         result.push(value.substring(lastIndex, error.index));
       }
       
+      // Check if cursor is within this error range to hide tooltip
+      const isCursorOnError = cursorPosition >= error.index && 
+                             cursorPosition <= error.index + error.length;
+      
       // Add the highlighted error
       result.push(
         <TooltipProvider key={`error-${error.index}`}>
-          <Tooltip>
+          <Tooltip open={!isCursorOnError}>
             <TooltipTrigger asChild>
               <span className="bg-red-200 border-b border-red-500">
                 {error.word}
@@ -349,12 +377,15 @@ export function Editor({ value, onChange, readOnly = false }: EditorProps) {
           <Textarea
             ref={textareaRef}
             value={value}
-            onChange={readOnly ? undefined : handleChange}
-            onKeyDown={readOnly ? undefined : handleKeyDown}
-            onCopy={readOnly ? undefined : handleCopy}
-            onCut={readOnly ? undefined : handleCut}
-            onPaste={readOnly ? undefined : handlePaste}
-            onDrop={readOnly ? undefined : handleDrop}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onKeyUp={handleCursorPositionChange}
+            onSelect={handleCursorPositionChange}
+            onClick={handleCursorPositionChange}
+            onCopy={handleCopy}
+            onCut={handleCut}
+            onPaste={handlePaste}
+            onDrop={handleDrop}
             className="min-h-[400px] resize-none font-mono"
             placeholder="Start writing your essay here..."
             disabled={readOnly}

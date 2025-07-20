@@ -3,7 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GradingForm } from "@/components/grading-form";
 import { KeystrokeGraph } from "@/components/keystroke-graph";
-import { Loader2, AlertTriangle, ArrowLeft, Brain, Shield } from "lucide-react";
+import { Loader2, AlertTriangle, ArrowLeft, Brain, Shield, Database, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { Submission, Assignment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Progress } from "@/components/ui/progress";
 import { useState, useCallback, useEffect } from "react";
+
+import { WritingSessionHistory } from "@/components/writing-session-history";
+import { SessionQuestionsSummary } from "@/components/session-questions-summary";
 
 // Function to render expanded quotes for teacher view
 function renderTeacherContent(submission: Submission & { assignment: Assignment }) {
@@ -164,9 +167,25 @@ export default function SubmissionPage() {
   
   // State to track view mode
   const [viewMode, setViewMode] = useState<'full' | 'timeSelection'>('full');
+  
+  // State to control submission details visibility for teachers
+  const [showSubmissionDetails, setShowSubmissionDetails] = useState(false);
 
   const submissionQuery = useQuery<Submission & { assignment: Assignment }>({
     queryKey: [`/api/submissions/${submissionId}`],
+  });
+
+  // Query for session questions (only for teachers)
+  const sessionQuestionsQuery = useQuery({
+    queryKey: [`/api/submissions/${submissionId}/sessions`],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/submissions/${submissionId}/sessions`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch session questions');
+      }
+      return response.json();
+    },
+    enabled: !!user?.isTeacher && !!submissionId, // Only fetch if user is a teacher
   });
 
   const finalizeMutation = useMutation({
@@ -593,7 +612,7 @@ export default function SubmissionPage() {
                     </span>
                   </div>
                   {analysis.metadata.cached && (
-                    <Button
+                    <Button 
                       variant="outline"
                       size="sm"
                       onClick={() => {
@@ -613,83 +632,113 @@ export default function SubmissionPage() {
         </Card>
       )}
 
-      {/* Existing submission content */}
+      {/* Submission Details */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Submission Details</CardTitle>
+          
+          {/* Teacher Controls */}
+          {user?.isTeacher && (
+            <Button
+              variant="outline"
+              onClick={() => setShowSubmissionDetails(!showSubmissionDetails)}
+            >
+              {showSubmissionDetails ? "Hide Details" : "Show Details"}
+            </Button>
+          )}
         </CardHeader>
+        
         <CardContent>
-          <div className="prose prose-sm max-w-none">
-            {user?.isTeacher && viewMode === 'timeSelection' ? (
-              renderEssayWithHighlights()
-            ) : (
-              <>
-                <h3>Essay Content</h3>
+          {/* Always show submission details for students, conditionally for teachers */}
+          {(!user?.isTeacher || showSubmissionDetails) && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Essay Content</h3>
                 <div className="bg-secondary/10 p-6 rounded-md whitespace-pre-wrap font-mono text-base text-foreground">
-                  {user?.isTeacher ? renderTeacherContent(submission) : submission.content}
+                  {submission.content}
                 </div>
-              </>
-            )}
+              </div>
 
-            {user?.isTeacher && submission.quotes && submission.quotes.length > 0 && viewMode === 'full' && (
-              <>
-                <h3 className="mt-8">Quotes Used</h3>
-                <div className="space-y-4 mb-6">
-                  <div className="bg-muted rounded-md p-4">
-                    <h4 className="font-semibold mb-3">All Quotes ({(submission.quotes as any[]).length})</h4>
-                    <div className="space-y-3">
-                      {(submission.quotes as any[]).map((quote, index) => (
-                        <div key={index} className="bg-secondary/20 p-3 rounded-md">
-                          <p className="italic mb-1">"{quote.text}"</p>
-                          <p className="text-sm text-muted-foreground">
-                            Source: {quote.source}
-                            {quote.page && <span> (p. {quote.page})</span>}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Added: {new Date(quote.insertedAt).toLocaleString()}
-                          </p>
+              {submission.quotes && submission.quotes.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Quotes Used</h3>
+                  <div className="space-y-3">
+                    {(submission.quotes as any[]).map((quote, index) => (
+                      <div key={index} className="bg-secondary/20 p-3 rounded-md">
+                        <p className="italic mb-1">"{quote.text}"</p>
+                        <p className="text-sm text-muted-foreground">
+                          Source: {quote.source}
+                          {quote.page && <span> (p. {quote.page})</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Added: {new Date(quote.insertedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Teacher-only view mode controls */}
+          {user?.isTeacher && (
+            <>
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4">Teacher View Options</h3>
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    variant={viewMode === 'full' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('full')}
+                  >
+                    Full Submission
+                  </Button>
+                  <Button
+                    variant={viewMode === 'timeSelection' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('timeSelection')}
+                    disabled={!selectedKeystrokeRange}
+                  >
+                    Time Selection View
+                  </Button>
+                </div>
+
+                <div className="bg-muted/50 p-4 rounded-md">
+                  {viewMode === 'timeSelection' ? (
+                    essayAtTime ? (
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="font-semibold mb-2">Content Before Selected Time</h4>
+                          <div className="bg-blue-50 p-3 rounded text-sm">
+                            {essayAtTime.before || 'No content before this time'}
+                          </div>
                         </div>
-                      ))}
+                        <div>
+                          <h4 className="font-semibold mb-2">Content Added During Selected Time</h4>
+                          <div className="bg-green-50 p-3 rounded text-sm">
+                            {essayAtTime.during || 'No content added during this time'}
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2">Full Content After Selected Time</h4>
+                          <div className="bg-gray-50 p-3 rounded text-sm max-h-48 overflow-y-auto">
+                            {essayAtTime.after}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        Select a time range on the keystroke graph to see content changes
+                      </p>
+                    )
+                  ) : (
+                    <div className="prose prose-sm max-w-none">
+                      <h3>Essay Content</h3>
+                      <div className="bg-secondary/10 p-6 rounded-md whitespace-pre-wrap font-mono text-base text-foreground">
+                        {submission.content}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </>
-            )}
+                  )}
 
-            {user?.isTeacher && (
-              <>
-                {viewMode === 'full' && (
-                  <>
-
-                  </>
-                )}
-
-                <h3 className="mt-8">Keystroke Analytics</h3>
-                <div className="space-y-4 text-sm">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-muted p-4 rounded-md">
-                      <p className="text-muted-foreground">Total Keystrokes</p>
-                      <p className="text-2xl font-bold">{keystrokes.length}</p>
-                    </div>
-                    <div className="bg-muted p-4 rounded-md">
-                      <p className="text-muted-foreground">Characters Typed</p>
-                      <p className="text-2xl font-bold">{typingStats.characters}</p>
-                    </div>
-                    <div className="bg-muted p-4 rounded-md">
-                      <p className="text-muted-foreground">Deletions</p>
-                      <p className="text-2xl font-bold">{typingStats.deletions}</p>
-                    </div>
-                    <div className="bg-muted p-4 rounded-md">
-                      <p className="text-muted-foreground">Total Time</p>
-                      <p className="text-2xl font-bold">{totalTimeInMinutes} min</p>
-                    </div>
-                  </div>
-
-                  <KeystrokeGraph 
-                    keystrokes={keystrokes} 
-                    onTimeRangeSelected={handleTimeRangeSelected}
-                  />
-                  
                   {selectedKeystrokeRange && (
                     <div className="bg-muted p-4 rounded-md">
                       <p className="font-medium mb-2">Selected Time Range Activity</p>
@@ -712,11 +761,68 @@ export default function SubmissionPage() {
                     </div>
                   )}
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
+
+      {/* Keystroke Graph - Teachers only */}
+      {user?.isTeacher && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Keystroke Analytics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-muted p-4 rounded-md">
+                  <p className="text-muted-foreground">Total Keystrokes</p>
+                  <p className="text-2xl font-bold">{keystrokes.length}</p>
+                </div>
+                <div className="bg-muted p-4 rounded-md">
+                  <p className="text-muted-foreground">Characters Typed</p>
+                  <p className="text-2xl font-bold">{typingStats.characters}</p>
+                </div>
+                <div className="bg-muted p-4 rounded-md">
+                  <p className="text-muted-foreground">Deletions</p>
+                  <p className="text-2xl font-bold">{typingStats.deletions}</p>
+                </div>
+                <div className="bg-muted p-4 rounded-md">
+                  <p className="text-muted-foreground">Total Time</p>
+                  <p className="text-2xl font-bold">{totalTimeInMinutes} min</p>
+                </div>
+              </div>
+
+              <KeystrokeGraph 
+                keystrokes={keystrokes} 
+                onTimeRangeSelected={handleTimeRangeSelected}
+                sessionQuestions={sessionQuestionsQuery.data?.sessions?.flatMap((session: any) => session.questions || []) || []}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Student Session Questions Summary */}
+      {!user?.isTeacher && submissionId && (
+        <SessionQuestionsSummary submissionId={parseInt(submissionId || '0')} />
+      )}
+
+      {/* Writing Session History - Always visible for teachers */}
+      {user?.isTeacher && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5" />
+              Writing Session History (10-Word Benchmarks)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <WritingSessionHistory submissionId={submission.id} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Action Buttons - Fixed at bottom */}
       {!submission.grade && submission.is_draft && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Editor } from "./editor";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Assignment, Submission } from "@shared/schema";
-import { Loader2, Plus, Quote, X, History } from "lucide-react";
+import { Loader2, Plus, Quote, X, History, Clock } from "lucide-react";
 import { useLocation } from "wouter";
 import { 
   Dialog, 
@@ -21,6 +21,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { VersionHistory } from "./version-history";
+import { useWritingSession } from "@/hooks/use-writing-session";
+import { SessionQuestionPopup } from "./session-question-popup";
+import { SessionQuestionsSummary } from "./session-questions-summary";
 
 interface SubmissionFormProps {
   assignment: Assignment;
@@ -57,8 +60,99 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
   const [newQuote, setNewQuote] = useState<Partial<QuoteItem>>({ text: "", source: "", page: "" });
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
 
+
+
   // Check if assignment is past due
   const isPastDue = new Date(assignment.dueDate) < new Date();
+
+  // Sync component state when initialDraft prop changes (after query refetch)
+  useEffect(() => {
+    if (initialDraft) {
+      setContent(initialDraft.content || "");
+      setKeystrokes(initialDraft.keystrokes as any[] || []);
+      setQuotes(initialDraft.quotes || []);
+      setLastSaved(initialDraft.submittedAt ? new Date(initialDraft.submittedAt) : null);
+    }
+  }, [initialDraft]);
+
+  // Silent save function for pre-question saves
+  const silentSave = useCallback(async (contentToSave: string, keystrokesToSave: any[], quotesToSave: QuoteItem[]) => {
+    if (isPastDue || initialDraft?.is_draft === false) {
+      return; // Don't save if past due or already submitted
+    }
+    
+    console.log('💾 Silently saving draft before questions...');
+    const currentTime = new Date();
+    
+    const response = await apiRequest("POST", "/api/submissions", {
+      assignmentId: assignment.id,
+      content: contentToSave,
+      keystrokes: keystrokesToSave,
+      quotes: quotesToSave,
+      is_draft: true,
+      submittedAt: currentTime.toISOString()
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to save draft');
+    }
+    
+    const data = await response.json();
+    setLastSaved(new Date(data.submittedAt));
+    console.log('✅ Silent save completed before questions');
+    
+    // Invalidate the draft query to refresh the component data
+    queryClient.invalidateQueries({ 
+      queryKey: [`/api/assignments/${assignment.id}/draft`] 
+    });
+    
+    return data;
+  }, [assignment.id, isPastDue, initialDraft?.is_draft]);
+
+  // Writing session management with auto-save before questions
+  const writingSession = useWritingSession({
+    submissionId: initialDraft?.id || 0,
+    assignmentTitle: assignment.title,
+    content,
+    keystrokes,
+    onQuestionsGenerated: async (questions) => {
+      console.log('🔔 Questions generated:', questions.length, 'questions');
+      
+      try {
+        // Save the current draft immediately before showing questions
+        await silentSave(content, keystrokes, quotes);
+        console.log('✅ Draft saved successfully before questions');
+        
+        // Wait a moment for the query invalidation to take effect
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error('❌ Failed to save draft before questions:', error);
+        // Continue showing questions even if save fails
+      }
+    },
+    onSessionComplete: () => {
+      // Silently refresh session data in background
+      queryClient.invalidateQueries({ 
+        queryKey: [`/api/submissions/${initialDraft?.id}/sessions`] 
+      });
+      
+      toast({
+        title: "Questions Completed",
+        description: "Continue writing - questions will appear again after another 10 words.",
+        duration: 2000,
+      });
+    }
+  });
+
+  // Debug logging for popup state
+  useEffect(() => {
+    console.log('🎭 Popup state update:', { 
+      questionsLength: writingSession.questions.length, 
+      isVisible: writingSession.showQuestions,
+      currentWordCount: writingSession.currentWordCount,
+      wordsUntilQuestions: writingSession.wordsUntilQuestions
+    });
+  }, [writingSession.showQuestions, writingSession.questions.length, writingSession.currentWordCount]);
 
   const saveDraftMutation = useMutation({
     mutationFn: async (data: { content: string, keystrokes: any[], quotes?: QuoteItem[] }) => {
@@ -122,13 +216,8 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Your assignment has been moved to My Submissions",
+        description: "Your assignment has been submitted successfully!",
       });
-
-      // Invalidate all relevant queries to refresh the data
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/classes/${assignment.classId}/submissions`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/classes/${assignment.classId}/assignments`] });
 
       // Clear auto-save timer
       if (autoSaveTimer) {
@@ -136,8 +225,10 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
         setAutoSaveTimer(null);
       }
 
-      // Redirect to class assignments page with submitted tab active
-      setLocation(`/classes/${assignment.classId}/assignments?tab=submitted`);
+      // Reload the page as requested
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000); // Small delay to show the success toast
     },
     onError: (error: Error) => {
       toast({
@@ -147,84 +238,6 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
       });
     },
   });
-
-  // // Auto-save functionality
-  // useEffect(() => {
-  //   if (!isPastDue && initialDraft?.is_draft !== false && !isSaving) {
-  //     if (autoSaveTimer) {
-  //       clearTimeout(autoSaveTimer);
-  //     }
-
-  //     const timer = setTimeout(() => {
-  //       if (content) {
-  //         setIsSaving(true);
-  //         saveDraftMutation.mutate(
-  //           { content, keystrokes, quotes },
-  //           {
-  //             onSuccess: () => {
-  //               // Refresh the draft data
-  //               queryClient.invalidateQueries({ queryKey: [`/api/assignments/${assignment.id}/draft`] });
-  //             },
-  //             onSettled: () => {
-  //               setIsSaving(false);
-  //             }
-  //           }
-  //         );
-  //       }
-  //     }, 15000); // Auto-save after 15 seconds of inactivity
-
-  //     setAutoSaveTimer(timer);
-  //   }
-
-  //   return () => {
-  //     if (autoSaveTimer) {
-  //       clearTimeout(autoSaveTimer);
-  //     }
-  //   };
-  // }, [content, keystrokes, quotes, isSaving, isPastDue, initialDraft?.is_draft]);
-  
-  // // Save content when user leaves/unmounts the component
-  // useEffect(() => {
-  //   // Add a beforeunload event to catch browser/tab closes
-  //   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-  //     if (!isPastDue && initialDraft?.is_draft !== false && content && !isSaving) {
-  //       // Save immediately before the page unloads
-  //       fetch('/api/submissions', {
-  //         method: 'POST',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //         body: JSON.stringify({
-  //           assignmentId: assignment.id,
-  //           content,
-  //           keystrokes,
-  //           quotes,
-  //           is_draft: true
-  //         }),
-  //         // Use keepalive to ensure the request completes even if the page is unloading
-  //         keepalive: true
-  //       });
-        
-  //       // Standard beforeunload behavior to prompt user confirmation
-  //       e.preventDefault();
-  //       e.returnValue = '';
-  //     }
-  //   };
-    
-  //   window.addEventListener('beforeunload', handleBeforeUnload);
-    
-  //   return () => {
-  //     window.removeEventListener('beforeunload', handleBeforeUnload);
-      
-  //     // Save draft when component unmounts (user navigates away or logs out)
-  //     if (!isPastDue && initialDraft?.is_draft !== false && content && !isSaving) {
-  //       setIsSaving(true);
-  //       saveDraftMutation.mutate({ content, keystrokes, quotes });
-  //     }
-  //   };
-  // }, [content, keystrokes, quotes, isPastDue, initialDraft?.is_draft, assignment.id, isSaving]);
-
-  
 
   const handleSaveDraft = () => {
     setIsSaving(true);
@@ -259,9 +272,6 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
   
   // Store cursor position for quote insertion
   const [cursorPosition, setCursorPosition] = useState<{start: number, end: number} | null>(null);
-  
-  // State to track if we're currently dragging over the editor
-  // No longer needed for click-to-insert functionality
   
   // Update cursor position when the editor textarea is focused
   const handleEditorFocus = () => {
@@ -332,8 +342,11 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
       content.substring(position.end);
     
     // Track the position for the new quote
-    const quoteWithPosition = {
-      ...quoteWithTimestamp,
+    const quoteWithPosition: QuoteItem = {
+      text: newQuote.text!,
+      source: newQuote.source!,
+      page: newQuote.page,
+      insertedAt: quoteWithTimestamp.insertedAt,
       position: {
         start: position.start,
         end: position.start + formattedQuote.length
@@ -432,7 +445,55 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
           </Card>
         )}
 
-        
+        {/* Writing Progress - Word Count */}
+        {!isPastDue && initialDraft?.is_draft !== false && (
+          <Card className="mb-4 bg-primary/5 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-primary" />
+                  <span className="font-medium">Writing Progress</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-mono font-bold text-primary">
+                    {writingSession.currentWordCount} words
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {writingSession.wordsUntilQuestions} words until questions
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                Questions appear every 10 words
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Editor blocking overlay */}
+        {writingSession.isBlocked && (
+          <Card className="mb-4 bg-orange-50 border-orange-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
+                <span className="font-medium text-orange-800">
+                  {writingSession.isLoading ? 
+                    "Saving your work and preparing questions..." :
+                    "Questions are active - please answer them to continue writing"
+                  }
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Session Questions Popup */}
+        <SessionQuestionPopup
+          questions={writingSession.questions}
+          isVisible={writingSession.showQuestions}
+          onComplete={writingSession.handleQuestionsComplete}
+          onClose={writingSession.handleQuestionsClose}
+        />
 
         <div 
           onMouseUp={handleEditorClick}
@@ -443,12 +504,12 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
           <Editor
             value={content}
             onChange={(newContent, newKeystrokes) => {
-              if (!isPastDue && initialDraft?.is_draft !== false) {
+              if (!isPastDue && initialDraft?.is_draft !== false && !writingSession.isBlocked) {
                 setContent(newContent);
                 setKeystrokes(newKeystrokes);
               }
             }}
-            readOnly={isPastDue || initialDraft?.is_draft === false}
+            readOnly={isPastDue || initialDraft?.is_draft === false || writingSession.isBlocked}
           />
         </div>
         
@@ -537,6 +598,11 @@ export function SubmissionForm({ assignment, initialDraft }: SubmissionFormProps
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Session Questions Summary - Only show for students with content and before submission */}
+          {!isPastDue && initialDraft?.is_draft !== false && content.trim() && initialDraft?.id && (
+            <SessionQuestionsSummary submissionId={initialDraft.id} />
+          )}
 
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">

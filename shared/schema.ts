@@ -126,6 +126,35 @@ export const submissionVersions = pgTable("submission_versions", {
   versionName: text("version_name"),
 });
 
+export const writingSessions = pgTable("writing_sessions", {
+  id: serial("id").primaryKey(),
+  submissionId: integer("submission_id").notNull(),
+  studentId: integer("student_id").notNull(),
+  sessionNumber: integer("session_number").notNull(), // 1, 2, 3, etc.
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"), // null if session is still active
+  sessionDuration: integer("session_duration"), // duration in minutes when session ends
+  contentAtStart: text("content_at_start").notNull(),
+  contentAtEnd: text("content_at_end"),
+  keystrokesInSession: jsonb("keystrokes_in_session").notNull().$type<Array<{ timestamp: string; type: string; key?: string }>>(),
+  questionsTriggered: boolean("questions_triggered").notNull().default(false),
+  questionsCompleted: boolean("questions_completed").notNull().default(false),
+});
+
+export const sessionQuestions = pgTable("session_questions", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull(),
+  questionNumber: integer("question_number").notNull(), // 1, 2, or 3
+  question: text("question").notNull(),
+  generatedAt: timestamp("generated_at").notNull(),
+  askedAt: timestamp("asked_at"), // when question was shown to user
+  answeredAt: timestamp("answered_at"), // when user submitted answer
+  answer: text("answer"),
+  timeToAnswer: integer("time_to_answer"), // seconds taken to answer
+  timedOut: boolean("timed_out").notNull().default(false), // true if 15s timer expired
+  contextContent: text("context_content").notNull(), // content at time of question generation
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -202,6 +231,21 @@ export const insertVersionSchema = z.object({
   versionName: z.string().optional()
 });
 
+export const insertWritingSessionSchema = createInsertSchema(writingSessions).pick({
+  submissionId: true,
+  studentId: true,
+  sessionNumber: true,
+  contentAtStart: true,
+  keystrokesInSession: true,
+});
+
+export const insertSessionQuestionSchema = createInsertSchema(sessionQuestions).pick({
+  sessionId: true,
+  questionNumber: true,
+  question: true,
+  contextContent: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
 export type ResetPassword = z.infer<typeof resetPasswordSchema>;
@@ -211,6 +255,8 @@ export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
 export type GradeSubmission = z.infer<typeof gradeSchema>;
 export type InsertVersion = z.infer<typeof insertVersionSchema>;
+export type InsertWritingSession = z.infer<typeof insertWritingSessionSchema>;
+export type InsertSessionQuestion = z.infer<typeof insertSessionQuestionSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Class = typeof classes.$inferSelect;
@@ -218,3 +264,5 @@ export type ClassStudent = typeof classStudents.$inferSelect;
 export type Assignment = typeof assignments.$inferSelect;
 export type Submission = typeof submissions.$inferSelect;
 export type SubmissionVersion = typeof submissionVersions.$inferSelect;
+export type WritingSession = typeof writingSessions.$inferSelect;
+export type SessionQuestion = typeof sessionQuestions.$inferSelect;
