@@ -117,7 +117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create temporary password for student
-      const tempPassword = randomBytes(8).toString('hex');
+      const tempPassword = "student";
       const hashedPassword = await hashPassword(tempPassword);
       
       // Create student account
@@ -214,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const student = await storage.getUserByStudentId(studentId);
       if (!student) {
         // Create new student account if doesn't exist
-        const tempPassword = randomBytes(8).toString('hex');
+        const tempPassword = "student";
         const hashedPassword = await hashPassword(tempPassword);
         const username = `${studentId}@temp.edu`;
 
